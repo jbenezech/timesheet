@@ -1,0 +1,27 @@
+<template>
+
+    <require from="./top-bar"></require>
+
+    <top-bar router.bind="router"></top-bar>
+
+    <div class="divider"></div>
+
+    <nav-bar router.bind="router"></nav-bar>
+
+    <div class="full height ui grid">
+        <div class="row">
+            <compose class="sixteen wide column" view-model="resources/flash/flash"></compose>
+        </div>
+
+        <div class="row">
+
+            <div class="page-host centered fourteen wide column pusher">
+                <div class="main-panel-container">
+                    <router-view></router-view>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</template>

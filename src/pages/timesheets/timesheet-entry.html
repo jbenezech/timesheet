@@ -1,0 +1,145 @@
+<template>
+    <require from="../../resources/dropdown/dropdown"></require>
+
+    <form
+        class="ui timesheet-entry form"
+        validation-renderer="semantic-form"
+        validation-errors.bind="errors"
+    >
+        
+        <div class="two fields">
+
+            <div class="two fields">
+
+                <div class="field">
+                    <label t="date">Date</label>
+                    <div 
+                        class="date ui calendar"
+                        data-property="date"
+                    >
+                        <div class="ui input left icon">
+                            <i class="calendar icon"></i>
+                            <input
+                                class=""
+                                type="text"
+                                t="[placeholder]timesheet:date"
+                                value.bind="dateInput & validate"
+                            />
+                        </div>
+                    </div>      
+                </div>
+
+                <div class="field">
+                    <label t="purpose">Purpose</label>
+                    <dropdown 
+                        selected-entry.two-way="entity.purpose & validate"
+                        route="purpose"
+                        name="timesheet:purpose"
+                        required.bind=true
+                        allow-add.bind=true
+                    >
+                    </dropdown>                
+                </div>
+
+            </div>
+
+            <div class="field">
+                <label t="time">Time Spent</label>
+                <div class="two hours fields">
+                    <div class="inline field">
+                        <input
+                            class="short integer input"
+                            id="HoursInput"
+                            type="text"
+                            t="[placeholder]timesheet:hours"
+                            value.bind="entity.hours & validate"
+                        />
+                        <label class="ui right floated" t="timesheet:hours">hours</label>
+                    </div>
+                    <div class="inline field">
+                        <input
+                            class="short integer input"
+                            type="text"
+                            t="[placeholder]timesheet:minutes"
+                            value.bind="entity.minutes & validate"
+                        />
+                        <label class="ui right floated" t="timesheet:minutes">minutes</label>
+                    </div>
+                </div>
+            </div>
+        
+        </div>
+
+        <div class="two fields">
+
+            <div class="field">
+                <label t="interpret">Interpret</label>
+                <dropdown 
+                    selected-entry.two-way="entity.interpret & validate"
+                    route="interpret"
+                    name="timesheet:interpret"
+                    required.bind=false
+                    allow-add.bind=true
+                >
+                </dropdown>
+            </div>
+
+            <div class="field">
+                <label t="interpret-time">Time for interpret</label>
+                <div class="two hours fields">
+                    <div class="inline field">
+                        <input
+                            class=""
+                            type="text"
+                            t="[placeholder]timesheet:hours"
+                            value.bind="entity.interpret_hours & validate"
+                        />
+                        <label class="ui right floated" t="timesheet:hours">hours</label>
+                    </div>
+                    <div class="inline field">
+                        <input
+                            class=""
+                            type="text"
+                            t="[placeholder]timesheet:minutes"
+                            value.bind="entity.interpret_minutes & validate"
+                        />
+                        <label class="ui right floated" t="timesheet:minutes">minutes</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="field">
+            <label t="observation">Observation</label>
+            <textarea
+                class=""
+                rows="2"
+                t="[placeholder]timesheet:observation"
+                value.bind="entity.observation & validate"
+            >
+            </textarea>
+        </div>
+
+        <div class="field">
+            <label t="travel">Travel</label>
+            <textarea
+                class=""
+                rows="2"
+                t="[placeholder]timesheet:travel"
+                value.bind="entity.travel & validate"
+            >
+            </textarea>
+        </div>        
+
+    </form>
+
+    <button
+        class="ui primary fluid button"
+        tabindex="0"
+        t="save"
+        click.trigger="doCreate($event)"
+    >
+        Save
+    </button>
+    
+</template>

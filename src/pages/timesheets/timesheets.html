@@ -1,0 +1,51 @@
+<template>
+
+    <require from="./timesheet-entry"></require>
+    <require from="../../resources/formats/date-format"></require>
+    <require from="../../resources/formats/limit-to-value"></require>
+
+    <confirmation approve-callback></confirmation>
+
+    <div class="ui timesheets">
+
+        <div class="ui centered fluid new timesheet">
+            <div class="content">
+                <div class="ui sixteen wide column grid">
+                    <div class="centered row">
+                        <timesheet-entry
+                            class=""
+                            create.bind="true"
+                            save-action.call="saveEntry(entity)"
+                        >
+                        </timesheet-entry>
+                    </div>
+
+                    <div class="centered row">
+                        <div class="ui styled fluid accordion entries">
+                            <template repeat.for="entity of lastTimesheet.doc.entries | limitTo: 5">
+                                <div class="title">
+                                    <i class="dropdown icon"></i>
+                                    ${ entity.date  | dateFormat } - 
+                                    ${ entity.hours }${ 'h' | t }${ entity.minutes }${ 'mn' | t } -
+                                    ${ purposes.get(entity.purpose) }
+                                </div>
+                                <div class="content">
+                                    <timesheet-entry
+                                        class=""
+                                        create.bind="false"
+                                        save-action.call="saveEntry(entity)"
+                                        entity.bind="entity"
+                                    >
+                                    </timesheet-entry>
+                                </div>
+                            </template>
+                        </div>
+                            
+                    </div>                    
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</template>

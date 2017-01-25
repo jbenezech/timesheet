@@ -1,0 +1,26 @@
+<template>
+
+    <div tabindex="-1" role="dialog" class="ui small modal confirmation modal-dialog">
+        <div class="header" t="confirmation">Confirmation</div>
+        <div class="content">
+            <p>${message | t}</p>
+        </div>
+        <div class="actions">
+            <div 
+                class="ui cancel negative button"
+                click.trigger="dialogController.cancel()"
+                t="no"
+            >
+                No
+            </div>
+            <div 
+                class="ui positive approve right labeled icon button"
+                click.trigger="dialogController.ok()"
+            >
+                ${ 'yes' | t}
+                <i class="checkmark icon"></i>
+            </div>
+        </div>
+    </div>
+    
+</template>

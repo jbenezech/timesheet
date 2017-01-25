@@ -1,0 +1,55 @@
+<template>
+
+    <div
+        class="ui fluid dropdown search selection ${multiple === true?'multiple':''}"
+        tabindex="0"
+    >
+        <input
+            if.bind="!multiple"
+            type="hidden"
+            name.bind="name"
+            value.bind="selectedEntry"
+        />
+
+        <select
+            if.bind="multiple === true"
+            name.bind="name"
+            multiple=""
+        >        
+            <option if.bind="!required && !multiple" t="All" data-value="" value="">All</option>
+            <option
+                repeat.for="entry of entries"
+                value="${entry.id}"
+            >
+                ${entry.doc.name}
+            </option>
+        </select>
+        
+        <i class="dropdown icon"></i>
+        <div 
+            class="
+                ${selectedEntry?'':'default'}
+                text
+            "
+            t="${name}"
+            data-default="${name|t}"
+            innerHTML.bind="selectedEntryName"
+        >
+            Entry
+        </div>
+        <div class="menu transition" tabindex="-1">
+            <div if.bind="!required && !multiple" class="item" t="All" data-value="">All</div>
+            <div
+                repeat.for="entry of entries"
+                data-value="${entry.id}"
+                class="
+                    item
+                    ${selectedEntry == entry.id ? 'active selected':''}
+                "
+            >
+                ${entry.doc.name}
+            </div>
+        </div>        
+    </div>
+
+</template>

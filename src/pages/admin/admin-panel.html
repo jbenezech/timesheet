@@ -1,0 +1,24 @@
+<template>
+
+    <require from="./users-timesheets"></require>
+    <require from="./admin-reports"></require>
+
+    <div class="ui two item stackable tabs pointing huge admin panel menu">        
+          <a class="active item" data-tab="definition"><i class="checkmark icon"></i></a>
+          <a class="item" data-tab="reports"><i class="pie chart icon"></i></a>
+    </div>
+
+    <div data-tab="definition" class="ui tab segment active">
+        <users-timesheets
+            month.bind="month"
+        >
+        </users-timesheets>
+    </div>
+    <div data-tab="reports" class="ui tab segment">
+        <admin-reports
+            month.bind="month"
+        >
+        </admin-reports>
+    </div>
+
+</template>

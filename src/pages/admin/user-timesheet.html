@@ -1,0 +1,82 @@
+<template>
+    <require from="../../resources/formats/date-format"></require>
+    <require from="../../resources/formats/truncate"></require>
+
+    <require from="../../resources/dropdown/dropdown"></require>
+
+    <div class="username"><h2>${ userName }</h2></div>
+    
+    <div class="ui middle aligned segment">
+    <form
+        class="ui form"
+        validation-renderer="semantic-form"
+        validation-errors.bind="errors"
+    >
+        <div class="three fields">
+            <div class="salary inline four wide field">
+                <label>${ 'salary' | t}:</label>
+                <input type="text" value.bind="timesheet.salary & validate" change.delegate="saveTimesheet()"/>
+            </div>
+            <div class="salary inline four wide field">
+                <label>${ 'charges' | t}:</label>
+                <input type="text" value.bind="timesheet.charges & validate" change.delegate="saveTimesheet()"/>
+            </div>
+            <div class="inline middle aligned four wide field">
+                <button
+                    class="ui small primary button"
+                    tabindex="0"
+                    t="save"
+                    click.delegate="saveTimesheet(username)"
+                >
+                    Save
+                </button>    
+            </div>
+    </form>
+        </div>
+    <form
+        class="ui user timesheet form"
+        validation-renderer="semantic-form"
+        validation-errors.bind="errors"
+    >
+
+        <table class="ui striped fixed monthly timesheet table">
+            <thead>
+                <tr>
+                    <th t="date">Date</th>
+                    <th t="purpose">Purpose</th>
+                    <th t="duration">Duration</th>
+                    <th t="description">Observation</th>
+                    <th t="allocation">Allocation</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    repeat.for="entity of timesheet.entries"
+                    click.delegate="openEntry(entity.id)"
+                    if.bind="entity.allocation === undefined || entity.allocation === null || !unallocatedOnly"
+                >
+                    <td>${ entity.date | dateFormat }</td>
+                    <td>${ purposes.get(entity.purpose) }</td>
+                    <td>${ entity.duration }${ 'h' | t }</td>
+                    <td>${ entity.observation | truncate: 40 }</td>
+                    <td onclick="event.stopPropagation();" style="overflow:visible;">
+                        <dropdown 
+                            selected-entry.two-way="entity.allocation"
+                            route="allocation"
+                            name="timesheet:allocation"
+                            required.bind=false
+                            allow-add.bind=true
+                            select-action.call="allocationSelected(dropdown)"
+                            add-action.call="allocationAdded(dropdown)"
+                            data-username="${username}"
+                            data-entryid="${entity.id}"
+                        >
+                        </dropdown>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+    </form>
+
+</template>

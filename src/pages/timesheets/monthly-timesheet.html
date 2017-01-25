@@ -1,0 +1,30 @@
+<template>
+    <require from="../../resources/formats/date-format"></require>
+    <require from="../../resources/formats/truncate"></require>
+
+    <table class="ui striped fixed monthly timesheet table">
+        <thead>
+            <tr>
+                <th t="date">Date</th>
+                <th t="purpose">Purpose</th>
+                <th t="duration">Duration</th>
+                <th t="interpret">Interpret</th>
+                <th t="interpret-time">Time</th>
+                <th t="description">Observation</th>
+                <th t="travel">Travel</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr repeat.for="entity of entity.entries" click.delegate="openEntry(entity.id)">
+                <td>${ entity.date | dateFormat }</td>
+                <td>${ purposes.get(entity.purpose) }</td>
+                <td>${ entity.duration }${ 'h' | t }</td>
+                <td>${ interprets.get(entity.interpret) }</td>
+                <td>${ entity.interpret_duration }${ 'h' }</td>
+                <td>${ entity.observation | truncate: 40 }</td>
+                <td>${ entity.travel | truncate: 40 }</td>
+            </tr>
+        </tbody>
+    </table>
+
+</template>

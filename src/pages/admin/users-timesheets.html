@@ -1,0 +1,34 @@
+<template>
+    <require from="./user-timesheet"></require>
+
+    <div class="ui grid basic segment">
+        <div 
+            class="ui toggle checkbox"
+            id="showAll"
+        >
+            <input
+                type="checkbox"
+                name="allentries"
+            >
+            <label t="timesheet:showallentries">Show all entries</label>
+        </div>
+    </div>
+
+
+    <div 
+        repeat.for="[username, timesheet] of timesheets"
+        class="user timesheet"
+    >
+        <user-timesheet
+            class=""
+            save-action.call="saveEntry(entity)"
+            timesheet.bind="timesheet"
+            user-name.bind="username"
+            purposes.bind="purposes"
+            unallocated-only.bind="unallocatedOnly"
+        >
+        </user-timesheet>
+
+    </div>
+
+</template>
