@@ -71,12 +71,17 @@ div.au-stagger {
   animation-delay: 50ms;
 }
 
+/* Login aligned in middle */
+div.ui.login.grid {
+  height: 100%;
+}
+
 /* New and Edit Entry Form */
 timesheet-entry {
   width: 90%;
 }
 
-.timesheet-entry .ui .calendar {
+.timesheet-entry .ui.calendar {
   margin-left: 0.5em;
 }
 
@@ -95,6 +100,12 @@ timesheet-entry {
 }
 
 /** Admin allocation panel **/
+
+.user.timesheet,
+.user.report {
+  margin-bottom: 20px;
+}
+
 .user.timesheet .button {
   vertical-align: middle;
   margin: auto;
@@ -217,6 +228,10 @@ timesheet-entry {
 }
 
 @media only screen and (max-device-width: 767px) {
+
+  .timesheet-entry .ui.calendar {
+    margin-left: 0;
+  }
 
   .timesheet-entry.ui.form .two.hours.fields > .field {
     width: 50% !important;

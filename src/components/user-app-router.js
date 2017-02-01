@@ -66,10 +66,10 @@ export class UserAppRouter {
             };
 
         let routes = [
-            ...timesheets,
-            ...planning,
-            ...adminPlanning,
-            ...user
+            timesheets,
+            planning,
+            adminPlanning,
+            user
         ];
 
         config.map(routes);

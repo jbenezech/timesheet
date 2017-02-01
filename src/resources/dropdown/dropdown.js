@@ -130,14 +130,18 @@ export class DropDownCustomElement {
                 this.selectedEntryName = entry.doc.name;
             }            
         }
-
+console.log("DRRRROP");
+console.log(this.selectedEntryName);
+console.log(this.getPlaceHolder());
         if (
             this.selectedEntryName &&
             this.selectedEntryName != this.getPlaceHolder()
         ) {
             $(this.element).find('.text')
             .removeClass('default');
+            console.log("REMOVE");
         } else {
+            console.log("RESTORE");
             this.restoreDefaults();
         }
     }
@@ -167,7 +171,7 @@ export class DropDownCustomElement {
         let doc = {
             name: newEntry
         };
-console.log(this);
+
         let me = this;
         this.db.create(this.route, doc).then(
             response => {
@@ -178,7 +182,6 @@ console.log(this);
                 ];
                 me.selectedEntry = doc._id;
                 $(me.element).find('.dropdown').dropdown('set value', doc._id);
-                console.log(me);
                 me.addAction({ dropdown: me });
             }
         )

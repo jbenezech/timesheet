@@ -6,33 +6,35 @@
 
     <div class="username"><h2>${ userName }</h2></div>
     
-    <div class="ui middle aligned segment">
-    <form
-        class="ui form"
-        validation-renderer="semantic-form"
-        validation-errors.bind="errors"
-    >
-        <div class="three fields">
-            <div class="salary inline four wide field">
-                <label>${ 'salary' | t}:</label>
-                <input type="text" value.bind="timesheet.salary & validate" change.delegate="saveTimesheet()"/>
+    <div class="${ userName } ui middle aligned segment">
+        <form
+            class="ui form"
+            validation-renderer="semantic-form"
+            validation-errors.bind="errors"
+        >
+            <div class="three fields">
+                <div class="salary inline four wide field">
+                    <label>${ 'salary' | t}:</label>
+                    <input type="text" value.bind="timesheet.salary & validate" change.delegate="saveTimesheet(userName)"/>
+                </div>
+                <div class="precarite ui checkbox inline four wide field">
+                    <label>${ 'precarite' | t}?</label>
+                    <input type="checkbox" value.bind="timesheet.precarite & validate" change.delegate="saveTimesheet(userName)"/>
+                </div>
+                <div class="inline middle aligned four wide field">
+                    <button
+                        class="ui small primary button"
+                        tabindex="0"
+                        t="save"
+                        click.delegate="saveTimesheet(userName)"
+                    >
+                        Save
+                    </button>    
+                </div>
             </div>
-            <div class="salary inline four wide field">
-                <label>${ 'charges' | t}:</label>
-                <input type="text" value.bind="timesheet.charges & validate" change.delegate="saveTimesheet()"/>
-            </div>
-            <div class="inline middle aligned four wide field">
-                <button
-                    class="ui small primary button"
-                    tabindex="0"
-                    t="save"
-                    click.delegate="saveTimesheet(username)"
-                >
-                    Save
-                </button>    
-            </div>
-    </form>
-        </div>
+        </form>
+    </div>
+    
     <form
         class="ui user timesheet form"
         validation-renderer="semantic-form"

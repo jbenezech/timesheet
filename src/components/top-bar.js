@@ -21,6 +21,10 @@ export class TopBar {
         this.title = this.i18n.tr('site_title');
     }
 
+    get isAdmin() {
+        return this.session.userHasRole('admin');
+    }
+    
     logout() {
         if (this.db.hasUnsyncedUpdate()) {
             this.dialogService.open({
@@ -37,8 +41,7 @@ export class TopBar {
     }
 
     clearData() {
-        this.db.removeUserDBs();
-        this.session.invalidate();
+        this.db.removeUserDBs().then( () => this.session.invalidate() );
     }
 
     attached() {

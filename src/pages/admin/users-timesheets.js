@@ -60,7 +60,6 @@ export class UsersTimesheets {
         let me = this;
         
         return this.db.listUsers().then( response => {
-            console.log(response);
             response.forEach( (user) => {
                 me.users.set(user.doc.name, user);
             });

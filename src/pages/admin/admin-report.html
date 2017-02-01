@@ -1,0 +1,61 @@
+<template>
+
+    <table class="ui celled table">
+        <thead>
+            <tr>
+                <th t="allocation">Allocation</th>
+                <th t="ratio">Ratio</th>
+                <th t="duration">Duration</th>
+                <th t="salary">Salary (641)</th>
+                <th t="charges">Charges (645)</th>
+                <th t="provisionCP">Prov. (641200)</th>
+                <th t="provision-charges">Prov. Charges (645000)</th>
+                <th t="precaritebrut">Precarite Brut</th>
+                <th t="precaritecharges">Precarite Charges</th>                
+            </tr>
+        </thead>
+        <tbody>
+            <tr repeat.for="report of entries">
+                <td>${report.allocationName}</td>
+                <td>${report.ratio.toFixed(2)}%</td>
+                <td>${report.duration.toFixed(2)}h</td>
+                <td>${report.salary.toFixed(2)}$</td>
+                <td>${report.accounts.charges.toFixed(2)}$</td>
+                <td>${report.accounts.provisionCPBrut.toFixed(2)}${ '$' | t }</td>
+                <td>${report.accounts.provisionCPCharges.toFixed(2)}${ '$' | t }</td>
+                <td>${report.accounts.primePrecariteBrut.toFixed(2)}${ '$' | t }</td>
+                <td>${report.accounts.primePrecariteCharges.toFixed(2)}${ '$' | t }</td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <th t="total"></th>
+                <th>${ totals.ratio.toFixed(2) }%</th>
+                <th>${ totals.duration.toFixed(2) }h</th>
+                <th>${ totals.salary.toFixed(2) }${ '$' | t }</th>
+                <th>${ totals.accounts.charges.toFixed(2) }${ '$' | t }</th>
+                <th>${ totals.accounts.provisionCPBrut.toFixed(2) }${ '$' | t }</th>
+                <th>${ totals.accounts.provisionCPCharges.toFixed(2) }${ '$' | t }</th>
+                <th>${ totals.accounts.primePrecariteBrut.toFixed(2) }${ '$' | t }</th>
+                <th>${ totals.accounts.primePrecariteCharges.toFixed(2) }${ '$' | t }</th>
+            </tr>
+            <tr>
+                <th t="netpayable"></th>
+                <th>${ totals.accounts.netPayable.toFixed(2) }${ '$' | t }</th>
+            </tr>
+            <tr>
+                <th t="ursaff"></th>
+                <th>${ totals.accounts.ursaff.toFixed(2) }${ '$' | t }</th>
+            </tr>
+            <tr>
+                <th t="provisionCP"></th>
+                <th>${ totals.accounts.provisionCP.toFixed(2) }${ '$' | t }</th>
+            </tr>
+            <tr>
+                <th t="provisionprecarite"></th>
+                <th>${ totals.accounts.provisionPrecarite.toFixed(2) }${ '$' | t }</th>
+            </tr>
+        </tfoot>
+    </table>
+
+</template>

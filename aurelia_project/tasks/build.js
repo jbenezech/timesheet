@@ -4,7 +4,7 @@ import processMarkup from './process-markup';
 import processCSS from './process-css';
 import {build} from 'aurelia-cli';
 import project from '../aurelia.json';
-import copyThemes from './copy-themes'; 
+import copyThemes from './copy-themes';
 
 export default gulp.series(
   readProjectConfiguration,

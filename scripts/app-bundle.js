@@ -485,6 +485,24 @@ define('components/top-bar',['exports', 'aurelia-framework', '../services/sessio
         }
     }
 
+    var _createClass = function () {
+        function defineProperties(target, props) {
+            for (var i = 0; i < props.length; i++) {
+                var descriptor = props[i];
+                descriptor.enumerable = descriptor.enumerable || false;
+                descriptor.configurable = true;
+                if ("value" in descriptor) descriptor.writable = true;
+                Object.defineProperty(target, descriptor.key, descriptor);
+            }
+        }
+
+        return function (Constructor, protoProps, staticProps) {
+            if (protoProps) defineProperties(Constructor.prototype, protoProps);
+            if (staticProps) defineProperties(Constructor, staticProps);
+            return Constructor;
+        };
+    }();
+
     var _dec, _class;
 
     var TopBar = exports.TopBar = (_dec = (0, _aureliaFramework.inject)(_session.Session, _aureliaI18n.I18N, _dbService.DBService, _aureliaDialog.DialogService, _aureliaRouter.Router), _dec(_class = function () {
@@ -519,8 +537,11 @@ define('components/top-bar',['exports', 'aurelia-framework', '../services/sessio
         };
 
         TopBar.prototype.clearData = function clearData() {
-            this.db.removeUserDBs();
-            this.session.invalidate();
+            var _this2 = this;
+
+            this.db.removeUserDBs().then(function () {
+                return _this2.session.invalidate();
+            });
         };
 
         TopBar.prototype.attached = function attached() {
@@ -534,6 +555,13 @@ define('components/top-bar',['exports', 'aurelia-framework', '../services/sessio
         TopBar.prototype.switchLocale = function switchLocale(locale) {
             this.session.switchLocale(locale);
         };
+
+        _createClass(TopBar, [{
+            key: 'isAdmin',
+            get: function get() {
+                return this.session.userHasRole('admin');
+            }
+        }]);
 
         return TopBar;
     }()) || _class);
@@ -616,7 +644,7 @@ define('components/user-app-router',['exports', 'aurelia-framework', '../service
                 auth: true
             };
 
-            var routes = [].concat(timesheets, planning, adminPlanning, user);
+            var routes = [timesheets, planning, adminPlanning, user];
 
             config.map(routes);
 
@@ -779,6 +807,112 @@ define('config/auth-config',['exports'], function (exports) {
 
     exports.default = config;
 });
+define('services/accounting-service',['exports', 'aurelia-framework', './session', 'pouchdb', 'moment', 'aurelia-event-aggregator', 'aurelia-fetch-client', './log', './db-service', 'decimal'], function (exports, _aureliaFramework, _session, _pouchdb, _moment, _aureliaEventAggregator, _aureliaFetchClient, _log, _dbService, _decimal) {
+    'use strict';
+
+    Object.defineProperty(exports, "__esModule", {
+        value: true
+    });
+    exports.AccountingService = undefined;
+
+    var _pouchdb2 = _interopRequireDefault(_pouchdb);
+
+    var _moment2 = _interopRequireDefault(_moment);
+
+    var _decimal2 = _interopRequireDefault(_decimal);
+
+    function _interopRequireDefault(obj) {
+        return obj && obj.__esModule ? obj : {
+            default: obj
+        };
+    }
+
+    function _classCallCheck(instance, Constructor) {
+        if (!(instance instanceof Constructor)) {
+            throw new TypeError("Cannot call a class as a function");
+        }
+    }
+
+    var _dec, _dec2, _class;
+
+    var AccountingService = exports.AccountingService = (_dec = (0, _aureliaFramework.inject)(_session.Session, _dbService.DBService, _aureliaFetchClient.HttpClient, _aureliaEventAggregator.EventAggregator), _dec2 = (0, _aureliaFramework.singleton)(), _dec(_class = _dec2(_class = function () {
+        function AccountingService(session, db, http, ea) {
+            _classCallCheck(this, AccountingService);
+
+            this.rules = new Map();
+
+            this.session = session;
+            this.db = db;
+            this.http = http;
+            this.ea = ea;
+        }
+
+        AccountingService.prototype.retrieveRules = function retrieveRules(accountingRuleEndKey) {
+            var _this = this;
+
+            if (accountingRuleEndKey === undefined) {
+                return;
+            }
+
+            return this.db.view('accounting', 'accounting/rules', accountingRuleEndKey, '', false, true, 1).then(function (rows) {
+
+                var row = rows[0];
+                _this.rules.set(row.key, {
+                    charges: new _decimal2.default(row.value[0]),
+                    provision_cp_brut: new _decimal2.default(row.value[1]),
+                    provision_cp_charges: new _decimal2.default(row.value[2]),
+                    prime_precarite_brut: new _decimal2.default(row.value[3]),
+                    net_payable: new _decimal2.default(row.value[4]),
+                    ursaff: new _decimal2.default(row.value[5])
+                });
+            });
+        };
+
+        AccountingService.prototype.provisionAccounts = function provisionAccounts(accountingRuleEndKey, salarySlip) {
+
+            var me = this;
+            if (!this.rules.has(accountingRuleEndKey)) {
+                return this.retrieveRules(accountingRuleEndKey).then(function () {
+                    return me.doProvision(me.rules.get(accountingRuleEndKey), salarySlip);
+                });
+            }
+
+            return new Promise(function (resolve) {
+                return resolve(me.doProvision(me.rules.get(accountingRuleEndKey), salarySlip));
+            });
+        };
+
+        AccountingService.prototype.doProvision = function doProvision(rules, salarySlip) {
+
+            var accounts = {
+                salary: salarySlip.salary,
+                charges: salarySlip.salary.mul(rules.charges),
+                provisionCPBrut: salarySlip.salary.mul(rules.provision_cp_brut),
+                netPayable: salarySlip.salary.mul(rules.net_payable),
+                ursaff: salarySlip.salary.mul(rules.ursaff)
+            };
+
+            accounts.provisionCPCharges = accounts.charges.mul(rules.provision_cp_charges);
+            accounts.provisionCP = accounts.provisionCPBrut.add(accounts.provisionCPCharges);
+
+            if (salarySlip.precarite) {
+                accounts.primePrecariteBrut = salarySlip.salary.mul(rules.prime_precarite_brut);
+                accounts.primePrecariteCharges = accounts.primePrecariteBrut.mul(rules.provision_cp_charges);
+                accounts.provisionPrecarite = accounts.primePrecariteBrut.add(accounts.primePrecariteCharges);
+            } else {
+                accounts.primePrecariteBrut = new _decimal2.default(0);
+                accounts.primePrecariteCharges = new _decimal2.default(0);
+                accounts.provisionPrecarite = new _decimal2.default(0);
+            }
+
+            salarySlip.accounts = accounts;
+
+            return salarySlip;
+        };
+
+        return AccountingService;
+    }()) || _class) || _class);
+});
 define('services/db-service',['exports', 'aurelia-framework', './session', 'pouchdb', 'moment', 'aurelia-event-aggregator', 'aurelia-fetch-client', './log'], function (exports, _aureliaFramework, _session, _pouchdb, _moment, _aureliaEventAggregator, _aureliaFetchClient, _log) {
     'use strict';
 
@@ -813,7 +947,8 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
             this.syncHandlers = new Map();
             this.lastUpdates = new Map();
             this.lastSyncs = new Map();
-            this.userDBs = ['timesheet'];
+            this.userDBPrefixes = ['timesheet'];
+            this.userDBs = [];
 
             this.session = session;
             this.http = http;
@@ -842,11 +977,18 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
                     me.ea.publish('dbsync', { dbName: dbName });
                 }
             }).on('error', function (err) {
+                console.log(dbName);
                 console.log(err);
                 me.handleSyncError(db, err);
             });
 
             this.syncHandlers.set(dbName, handler);
+
+            this.userDBPrefixes.forEach(function (prefix) {
+                if (dbName.match(new RegExp("^" + prefix))) {
+                    me.userDBs.push(dbName);
+                }
+            });
 
             return db;
         };
@@ -855,9 +997,7 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
             return {
                 live: true,
                 retry: true,
-
                 ajax: {
-                    "withCredentials": false,
                     "headers": {
                         "Authorization": "Basic " + localStorage.getItem('aurelia_token')
                     }
@@ -879,24 +1019,29 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
 
         DBService.prototype.removeUserDBs = function removeUserDBs() {
             var me = this;
+            var promises = [];
 
-            this.userDBs.forEach(function (dbPrefixes) {
-                var dbName = dbPrefixes + '-' + me.session.getUser().name;
+            this.userDBs.forEach(function (dbName) {
 
-                if (!me.dbs.has(dbName)) {
-                    return;
+                _log.log.debug("Try deleting " + dbName);
+
+                if (me.dbs.has(dbName)) {
+
+                    me.syncHandlers.get(dbName).cancel();
+                    me.syncHandlers.delete(dbName);
+                    me.dbs.get(dbName).destroy();
+                    promises.push(me.dbs.delete(dbName));
+
+                    _log.log.debug("Deleted " + dbName);
                 }
-
-                me.syncHandlers.get(dbName).cancel();
-                me.syncHandlers.delete(dbName);
-                me.dbs.get(dbName).destroy();
-                me.dbs.delete(dbName);
             });
 
             if (this.dbs.has('staff')) {
                 this.dbs.get('staff').destroy();
-                this.dbs.delete('staff');
+                promises.push(this.dbs.delete('staff'));
             }
+
+            return Promise.all(promises);
         };
 
         DBService.prototype.listUsers = function listUsers() {
@@ -948,6 +1093,8 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
             }).catch(function (err) {
                 return db.allDocs({ include_docs: true }).then(function (result) {
                     return result.rows;
+                }).catch(function (err) {
+                    _log.log.debug(err);
                 });
             });
         };
@@ -1006,13 +1153,22 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
             var startKey = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : '';
             var endKey = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : '';
             var group = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : false;
+            var descending = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : false;
+            var limit = arguments.length > 6 && arguments[6] !== undefined ? arguments[6] : 0;
 
 
-            return this.getDB(dbName).query(viewName, {
+            var options = {
                 start_key: startKey,
                 end_key: endKey,
-                group: group
-            }).then(function (response) {
+                group: group,
+                descending: descending
+            };
+
+            if (limit > 0) {
+                options.limit = limit;
+            }
+
+            return this.getDB(dbName).query(viewName, options).then(function (response) {
                 return response.rows;
             }).catch(function (err) {
                 _log.log.error(err);
@@ -1264,11 +1420,11 @@ define('services/session',['exports', 'aurelia-framework', './route-loader', 'au
 
         Session.prototype.start = function start() {
             var me = this;
-            console.log("START");
+
             return this.loadUserFromBackend().then(function () {
-                console.log("STARTED");
+
                 me.started = true;
-                console.log("started");
+                return true;
             }).catch(function (err) {
                 console.log(err);
             });
@@ -1308,6 +1464,10 @@ define('services/session',['exports', 'aurelia-framework', './route-loader', 'au
             return this.user;
         };
 
+        Session.prototype.userHasRole = function userHasRole(role) {
+            return this.user !== undefined && this.user !== null && this.user.roles.includes(role);
+        };
+
         Session.prototype.loadUserFromBackend = function loadUserFromBackend() {
 
             if (localStorage.getItem('aurelia_token') === null) {
@@ -1331,16 +1491,15 @@ define('services/session',['exports', 'aurelia-framework', './route-loader', 'au
 
             var me = this;
 
-            var user = db.get('org.couchdb.user:' + username, {
+            return db.get('org.couchdb.user:' + username, {
                 include_docs: true
             }).then(function (result) {
                 me.user = result;
                 me.persistToStorage();
+                return result;
             }).catch(function (err) {
                 console.log(err);
             });
-
-            return new Promise.resolve(true);
         };
 
         Session.prototype.invalidate = function invalidate() {
@@ -1570,7 +1729,11 @@ define('pages/admin/admin-panel',['exports', 'aurelia-framework'], function (exp
         }
 
         AdminPanel.prototype.attached = function attached() {
-            $('.admin.panel.menu .item').tab();
+            $('.admin.panel.menu .item').tab({
+                'onLoad': function onLoad(tab, param) {
+                    document.querySelector('admin-reports').au.controller.viewModel.refresh();
+                }
+            });
         };
 
         AdminPanel.prototype.activate = function activate(params) {
@@ -1580,7 +1743,7 @@ define('pages/admin/admin-panel',['exports', 'aurelia-framework'], function (exp
         return AdminPanel;
     }();
 });
-define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-event-aggregator', './admin-router', '../../services/session', '../../services/db-service', '../../config/app-settings', 'moment', 'aurelia-i18n', 'decimal'], function (exports, _aureliaFramework, _aureliaEventAggregator, _adminRouter, _session, _dbService, _appSettings, _moment, _aureliaI18n, _decimal) {
+define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-event-aggregator', './admin-router', '../../services/session', '../../services/db-service', '../../services/accounting-service', '../../config/app-settings', 'moment', 'aurelia-i18n', 'decimal', '../../services/log'], function (exports, _aureliaFramework, _aureliaEventAggregator, _adminRouter, _session, _dbService, _accountingService, _appSettings, _moment, _aureliaI18n, _decimal, _log) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -1599,6 +1762,12 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
             default: obj
         };
     }
+
+    var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
+        return typeof obj;
+    } : function (obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+    };
 
     function _initDefineProp(target, property, descriptor, context) {
         if (!descriptor) return;
@@ -1651,8 +1820,8 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
 
     var _dec, _class, _desc, _value, _class2, _descriptor;
 
-    var AdminReports = exports.AdminReports = (_dec = (0, _aureliaFramework.inject)(_session.Session, _dbService.DBService, _aureliaI18n.I18N, _aureliaEventAggregator.EventAggregator, _aureliaFramework.TaskQueue, _adminRouter.AdminRouter), _dec(_class = (_class2 = function () {
-        function AdminReports(session, db, i18n, ea, taskQueue, router) {
+    var AdminReports = exports.AdminReports = (_dec = (0, _aureliaFramework.inject)(_session.Session, _dbService.DBService, _accountingService.AccountingService, _aureliaI18n.I18N, _aureliaEventAggregator.EventAggregator, _aureliaFramework.TaskQueue, _adminRouter.AdminRouter), _dec(_class = (_class2 = function () {
+        function AdminReports(session, db, accounting, i18n, ea, taskQueue, router) {
             _classCallCheck(this, AdminReports);
 
             _initDefineProp(this, 'month', _descriptor, this);
@@ -1665,6 +1834,7 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
 
             this.session = session;
             this.db = db;
+            this.accounting = accounting;
             this.i18n = i18n;
             this.ea = ea;
             this.router = router;
@@ -1686,6 +1856,10 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
                     me.loadReports();
                 }
             });
+        };
+
+        AdminReports.prototype.refresh = function refresh() {
+            this.loadReports();
         };
 
         AdminReports.prototype.getNextMonth = function getNextMonth() {
@@ -1753,22 +1927,28 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
             this.users.forEach(function (user) {
 
                 promises.push(me.db.view('timesheet-' + user.doc.name, 'allocations/stats', me.month, me.getNextMonth(), false).then(function (entries) {
-                    if (entries) {
-                        (function () {
-                            var allocationUserReports = [];
-                            entries.forEach(function (entry) {
-                                var allocation = entry.key.split(':')[1];
-                                allocationUserReports.push({
-                                    allocation: allocation,
-                                    allocationName: me.allocations.get(allocation),
-                                    ratio: new _decimal2.default(parseFloat(entry.value[0])).mul(100),
-                                    duration: new _decimal2.default(entry.value[1]),
-                                    salary: new _decimal2.default(entry.value[2]).mul(parseFloat(entry.value[0]))
-                                });
-                            });
-                            me.allocationUserReports.set(user.doc.name, me.groupReportsByAllocation(allocationUserReports));
-                        })();
-                    }
+
+                    var allocationUserReports = [];
+                    var reportsPromises = [];
+
+                    return Promise.all(entries.map(function (entry) {
+
+                        var allocation = entry.key.split(':')[1];
+
+                        var report = {
+                            allocation: allocation,
+                            allocationName: me.allocations.get(allocation),
+                            ratio: new _decimal2.default(parseFloat(entry.value[0])).mul(100),
+                            duration: new _decimal2.default(entry.value[1]),
+                            salary: new _decimal2.default(entry.value[2]).mul(parseFloat(entry.value[0])),
+                            precarite: entry.value[3]
+                        };
+
+                        return me.accounting.provisionAccounts(me.accountingRuleEndKey, report);
+                    }));
+                }).then(function (allocationUserReports) {
+
+                    me.allocationUserReports.set(user.doc.name, me.groupReportsByAllocation(allocationUserReports));
                 }));
             });
 
@@ -1777,34 +1957,26 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
 
         AdminReports.prototype.groupReportsByAllocation = function groupReportsByAllocation(reports) {
 
-            var totals = {
-                ratio: new _decimal2.default(0),
-                duration: new _decimal2.default(0),
-                salary: new _decimal2.default(0)
-            };
+            var totals = {};
+
+            var nbrReports = 0;
 
             var grouped = new Map();
             for (var reportIdx in reports) {
 
-                var report = reports[reportIdx];
+                var report = Object.assign({}, reports[reportIdx]);
 
                 if (!grouped.has(report.allocation)) {
-                    grouped.set(report.allocation, report);
-                    totals.ratio = totals.ratio.add(report.ratio);
-                    totals.duration = totals.duration.add(report.duration);
-                    totals.salary = totals.salary.add(report.salary);
+
+                    grouped.set(report.allocation, Object.assign({}, report));
+                    totals = this.addReportsData(totals, report);
                     continue;
                 }
 
                 var current = grouped.get(report.allocation);
 
-                current.ratio = current.ratio.add(report.ratio);
-                current.duration = current.duration.add(report.duration);
-                current.salary = current.salary.add(report.salary);
-
-                totals.ratio = totals.ratio.add(report.ratio);
-                totals.duration = totals.duration.add(report.duration);
-                totals.salary = totals.salary.add(report.salary);
+                grouped.set(report.allocation, this.addReportsData(current, report));
+                totals = this.addReportsData(totals, report);
             }
 
             return {
@@ -1813,11 +1985,11 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
             };
         };
 
-        AdminReports.prototype.aggregateReports = function aggregateReports() {
+        AdminReports.prototype.addReportsData = function addReportsData(target, source) {
 
-            var allReports = [];
+            var result = {};
 
-            for (var _iterator = this.allocationUserReports.values(), _isArray = Array.isArray(_iterator), _i = 0, _iterator = _isArray ? _iterator : _iterator[Symbol.iterator]();;) {
+            for (var _iterator = Object.getOwnPropertyNames(source), _isArray = Array.isArray(_iterator), _i = 0, _iterator = _isArray ? _iterator : _iterator[Symbol.iterator]();;) {
                 var _ref;
 
                 if (_isArray) {
@@ -1829,12 +2001,72 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
                     _ref = _i.value;
                 }
 
-                var allocationUserReportObjects = _ref;
+                var prop = _ref;
 
-                allReports = [].concat(allReports, allocationUserReportObjects.entries);
+
+                if (_typeof(source[prop]) === 'object') {
+                    if (source[prop] instanceof _decimal2.default) {
+                        result[prop] = new _decimal2.default(0);
+                        if (target[prop] === undefined) {
+                            target[prop] = new _decimal2.default(0);
+                        }
+                        result[prop] = target[prop].add(source[prop]);
+                    }
+                }
             }
 
+            if (source.accounts !== undefined) {
+                result.accounts = {};
+                if (target.accounts === undefined) {
+                    target.accounts = {};
+                }
+                result.accounts = this.addReportsData(target.accounts, source.accounts);
+            }
+
+            return result;
+        };
+
+        AdminReports.prototype.aggregateReports = function aggregateReports() {
+
+            var allReports = [];
+            var nbrReports = 0;
+
+            for (var _iterator2 = this.allocationUserReports.values(), _isArray2 = Array.isArray(_iterator2), _i2 = 0, _iterator2 = _isArray2 ? _iterator2 : _iterator2[Symbol.iterator]();;) {
+                var _ref2;
+
+                if (_isArray2) {
+                    if (_i2 >= _iterator2.length) break;
+                    _ref2 = _iterator2[_i2++];
+                } else {
+                    _i2 = _iterator2.next();
+                    if (_i2.done) break;
+                    _ref2 = _i2.value;
+                }
+
+                var allocationUserReportObjects = _ref2;
+
+                allReports = [].concat(allReports, allocationUserReportObjects.entries);
+                nbrReports++;
+            }
             this.allocationReports = this.groupReportsByAllocation(allReports);
+
+            for (var _iterator3 = this.allocationReports.entries, _isArray3 = Array.isArray(_iterator3), _i3 = 0, _iterator3 = _isArray3 ? _iterator3 : _iterator3[Symbol.iterator]();;) {
+                var _ref3;
+
+                if (_isArray3) {
+                    if (_i3 >= _iterator3.length) break;
+                    _ref3 = _iterator3[_i3++];
+                } else {
+                    _i3 = _iterator3.next();
+                    if (_i3.done) break;
+                    _ref3 = _i3.value;
+                }
+
+                var entry = _ref3;
+
+                entry.ratio = entry.ratio.div(nbrReports);
+            }
+            this.allocationReports.totals.ratio = this.allocationReports.totals.ratio.div(nbrReports);
 
             this.generateExportLink();
         };
@@ -1854,7 +2086,7 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
 
 
             var me = this;
-            var csvContent = this.month + '\n' + this.i18n.tr('allocation') + ';' + this.i18n.tr('ratio') + ';' + this.i18n.tr('duration') + ';' + this.i18n.tr('salary') + '\n';
+            var csvContent = this.month + '\n' + this.i18n.tr('allocation') + ';' + this.i18n.tr('ratio') + ';' + this.i18n.tr('duration') + ';' + this.i18n.tr('salary') + ';' + this.i18n.tr('charges') + ';' + this.i18n.tr('provisionCP-brut') + ';' + this.i18n.tr('provisionCP-charges') + ';' + this.i18n.tr('primeprecarite-brut') + ';' + this.i18n.tr('primeprecarite-charges') + '\n';
 
             var reports = this.allocationReports;
             var fileName = me.month + '.csv';
@@ -1865,12 +2097,16 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
                 lnk = document.getElementById(user + '-csv-export-link');
             }
 
+            if (lnk === null) {
+                return;
+            }
+
             for (var reportIdx in reports.entries) {
                 var report = reports.entries[reportIdx];
-                csvContent += report.allocationName + ';' + report.ratio + ';' + report.duration + ';' + report.salary + '\n';
+                csvContent += report.allocationName + ';' + report.ratio + ';' + report.duration + ';' + report.salary + ';' + report.accounts.charges + ';' + report.accounts.provisionCPBrut + ';' + report.accounts.provisionCPCharges + ';' + report.accounts.primePrecariteBrut + ';' + report.accounts.primePrecariteCharges + '\n';
             };
 
-            csvContent += ';' + reports.totals.ratio + ';' + reports.totals.duration + ';' + reports.totals.salary + '\n';
+            csvContent += ';' + reports.totals.ratio + ';' + reports.totals.duration + ';' + reports.totals.salary + ';' + reports.totals.accounts.charges + ';' + reports.totals.accounts.provisionCPBrut + ';' + reports.totals.accounts.provisionCPCharges + ';' + reports.totals.accounts.primePrecariteBrut + ';' + reports.totals.accounts.primePrecariteCharges + '\n' + this.i18n.tr('netpayable') + ';' + reports.totals.accounts.netPayable + '\n' + this.i18n.tr('ursaaf') + ';' + reports.totals.accounts.ursaff + '\n' + this.i18n.tr('provisionCP') + ';' + reports.totals.accounts.provisionCP + '\n' + this.i18n.tr('provisionprecarite') + ';' + reports.totals.accounts.provisionPrecarite + '\n';
 
             lnk.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(csvContent));
             lnk.setAttribute('download', fileName);
@@ -2053,7 +2289,7 @@ define('pages/admin/user-timesheet',['exports', 'aurelia-framework', 'aurelia-ev
         throw new Error('Decorating class property failed. Please ensure that transform-class-properties is enabled.');
     }
 
-    var _dec, _class, _desc, _value, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4;
+    var _dec, _class, _desc, _value, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5;
 
     var UserTimesheet = exports.UserTimesheet = (_dec = (0, _aureliaFramework.inject)(Element, _session.Session, _dbService.DBService, _aureliaI18n.I18N, _aureliaEventAggregator.EventAggregator, _aureliaFramework.BindingEngine, _aureliaFramework.NewInstance.of(_aureliaValidation.ValidationController), _adminRouter.AdminRouter), _dec(_class = (_class2 = function () {
         function UserTimesheet(element, session, db, i18n, ea, bindingEngine, controller, router) {
@@ -2067,6 +2303,8 @@ define('pages/admin/user-timesheet',['exports', 'aurelia-framework', 'aurelia-ev
 
             _initDefineProp(this, 'unallocatedOnly', _descriptor4, this);
 
+            _initDefineProp(this, 'accountingRules', _descriptor5, this);
+
             this.element = element;
             this.session = session;
             this.db = db;
@@ -2079,7 +2317,12 @@ define('pages/admin/user-timesheet',['exports', 'aurelia-framework', 'aurelia-ev
 
         UserTimesheet.prototype.attached = function attached() {
 
-            _aureliaValidation.ValidationRules.ensure('salary').required().matches(/^[\d]+[\.|]?[\d]*$/).withMessage(this.i18n.tr('error_number')).on(this.timesheet);
+            $('.' + this.userName + ' .precarite.checkbox').checkbox();
+            if (this.timesheet.precarite) {
+                $('.' + this.userName + ' .precarite.checkbox').checkbox('set checked');
+            }
+
+            _aureliaValidation.ValidationRules.ensure('salary').required().matches(/^[\d]+[\.|]?[\d]*$/).withMessage(this.i18n.tr('error_number')).ensure('charges').required().matches(/^[\d]+[\.|]?[\d]*$/).withMessage(this.i18n.tr('error_number')).on(this.timesheet);
         };
 
         UserTimesheet.prototype.allocationSelected = function allocationSelected(dropdown) {
@@ -2093,7 +2336,7 @@ define('pages/admin/user-timesheet',['exports', 'aurelia-framework', 'aurelia-ev
 
             this.calculateRatios();
 
-            this.saveTimesheet();
+            this.saveTimesheet(userName);
         };
 
         UserTimesheet.prototype.allocationAdded = function allocationAdded(dropdown) {
@@ -2113,7 +2356,7 @@ define('pages/admin/user-timesheet',['exports', 'aurelia-framework', 'aurelia-ev
             });
         };
 
-        UserTimesheet.prototype.saveTimesheet = function saveTimesheet() {
+        UserTimesheet.prototype.saveTimesheet = function saveTimesheet(userName) {
             var _this = this;
 
             var errors = this.controller.validate().then(function (result) {
@@ -2121,6 +2364,8 @@ define('pages/admin/user-timesheet',['exports', 'aurelia-framework', 'aurelia-ev
                 if (!result.valid) {
                     return;
                 }
+
+                _this.timesheet.precarite = $('.' + userName + ' .precarite.checkbox').checkbox('is checked');
 
                 _this.db.save('timesheet-' + _this.userName, _this.timesheet).then(function () {
                     _this.db.get('timesheet-' + _this.userName, _this.timesheet._id).then(function (response) {
@@ -2149,6 +2394,9 @@ define('pages/admin/user-timesheet',['exports', 'aurelia-framework', 'aurelia-ev
             return new Map();
         }
     }), _descriptor4 = _applyDecoratedDescriptor(_class2.prototype, 'unallocatedOnly', [_aureliaFramework.bindable], {
+        enumerable: true,
+        initializer: null
+    }), _descriptor5 = _applyDecoratedDescriptor(_class2.prototype, 'accountingRules', [_aureliaFramework.bindable], {
         enumerable: true,
         initializer: null
     })), _class2)) || _class);
@@ -2274,7 +2522,6 @@ define('pages/admin/users-timesheets',['exports', 'aurelia-framework', 'aurelia-
             var me = this;
 
             return this.db.listUsers().then(function (response) {
-                console.log(response);
                 response.forEach(function (user) {
                     me.users.set(user.doc.name, user);
                 });
@@ -3061,7 +3308,7 @@ define('pages/user/logged-redirect',['exports', 'aurelia-framework', 'aurelia-ro
         return LoggedRedirect;
     }()) || _class);
 });
-define('pages/user/login',['exports', 'aurelia-framework', 'aurelia-auth', 'aurelia-router', '../../services/session', '../../config/app-settings', 'pouchdb', 'pouchdb-authentication'], function (exports, _aureliaFramework, _aureliaAuth, _aureliaRouter, _session, _appSettings, _pouchdb, _pouchdbAuthentication) {
+define('pages/user/login',['exports', 'aurelia-framework', 'aurelia-auth', 'aurelia-router', '../../services/session', '../../config/app-settings', 'pouchdb', 'pouchdb-authentication', '../../services/log'], function (exports, _aureliaFramework, _aureliaAuth, _aureliaRouter, _session, _appSettings, _pouchdb, _pouchdbAuthentication, _log) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -3111,6 +3358,7 @@ define('pages/user/login',['exports', 'aurelia-framework', 'aurelia-auth', 'aure
                 console.log("RESPONSE:");
                 console.log(response);
                 if (err) {
+                    _log.log.error(err);
                     login.loginError = err.name;
                     $('.ui.form .login.error.message').show();
                     return;
@@ -3715,10 +3963,14 @@ define('resources/dropdown/dropdown',['exports', 'aurelia-framework', '../../ser
                     this.selectedEntryName = entry.doc.name;
                 }
             }
-
+            console.log("DRRRROP");
+            console.log(this.selectedEntryName);
+            console.log(this.getPlaceHolder());
             if (this.selectedEntryName && this.selectedEntryName != this.getPlaceHolder()) {
                 $(this.element).find('.text').removeClass('default');
+                console.log("REMOVE");
             } else {
+                console.log("RESTORE");
                 this.restoreDefaults();
             }
         };
@@ -3742,14 +3994,13 @@ define('resources/dropdown/dropdown',['exports', 'aurelia-framework', '../../ser
             var doc = {
                 name: newEntry
             };
-            console.log(this);
+
             var me = this;
             this.db.create(this.route, doc).then(function (response) {
                 doc._id = response.id;
                 me.entries = [{ id: response.id, doc: doc }].concat(me.entries);
                 me.selectedEntry = doc._id;
                 $(me.element).find('.dropdown').dropdown('set value', doc._id);
-                console.log(me);
                 me.addAction({ dropdown: me });
             });
         };
@@ -11670,16 +11921,89 @@ define('aurelia-dialog/dialog-service',['exports', 'aurelia-metadata', 'aurelia-
     }
   }
 });
+define('pages/admin/admin-report',['exports', 'aurelia-framework'], function (exports, _aureliaFramework) {
+    'use strict';
+
+    Object.defineProperty(exports, "__esModule", {
+        value: true
+    });
+    exports.AdminReport = undefined;
+
+    function _initDefineProp(target, property, descriptor, context) {
+        if (!descriptor) return;
+        Object.defineProperty(target, property, {
+            enumerable: descriptor.enumerable,
+            configurable: descriptor.configurable,
+            writable: descriptor.writable,
+            value: descriptor.initializer ? descriptor.initializer.call(context) : void 0
+        });
+    }
+
+    function _classCallCheck(instance, Constructor) {
+        if (!(instance instanceof Constructor)) {
+            throw new TypeError("Cannot call a class as a function");
+        }
+    }
+
+    function _applyDecoratedDescriptor(target, property, decorators, descriptor, context) {
+        var desc = {};
+        Object['ke' + 'ys'](descriptor).forEach(function (key) {
+            desc[key] = descriptor[key];
+        });
+        desc.enumerable = !!desc.enumerable;
+        desc.configurable = !!desc.configurable;
+
+        if ('value' in desc || desc.initializer) {
+            desc.writable = true;
+        }
+
+        desc = decorators.slice().reverse().reduce(function (desc, decorator) {
+            return decorator(target, property, desc) || desc;
+        }, desc);
+
+        if (context && desc.initializer !== void 0) {
+            desc.value = desc.initializer ? desc.initializer.call(context) : void 0;
+            desc.initializer = undefined;
+        }
+
+        if (desc.initializer === void 0) {
+            Object['define' + 'Property'](target, property, desc);
+            desc = null;
+        }
+
+        return desc;
+    }
+
+    function _initializerWarningHelper(descriptor, context) {
+        throw new Error('Decorating class property failed. Please ensure that transform-class-properties is enabled.');
+    }
+
+    var _desc, _value, _class, _descriptor, _descriptor2;
+
+    var AdminReport = exports.AdminReport = (_class = function AdminReport() {
+        _classCallCheck(this, AdminReport);
+
+        _initDefineProp(this, 'entries', _descriptor, this);
+
+        _initDefineProp(this, 'totals', _descriptor2, this);
+    }, (_descriptor = _applyDecoratedDescriptor(_class.prototype, 'entries', [_aureliaFramework.bindable], {
+        enumerable: true,
+        initializer: null
+    }), _descriptor2 = _applyDecoratedDescriptor(_class.prototype, 'totals', [_aureliaFramework.bindable], {
+        enumerable: true,
+        initializer: null
+    })), _class);
+});
 define('text!app.html', ['module'], function(module) { module.exports = "<template>\n  <require from=\"semantic/semantic.css\"></require>\n  <require from=\"./styles/styles.css\"></require>\n\n  <router-view></router-view>\n\n</template>\n\n"; });
-define('text!styles/styles.css', ['module'], function(module) { module.exports = "body {\n  margin: 0;\n}\n\n.splash {\n  text-align: center;\n  margin: 10% 0 0 0;\n  box-sizing: border-box;\n}\n\n.splash .message {\n  font-size: 72px;\n  line-height: 72px;\n  text-shadow: rgba(0, 0, 0, 0.5) 0 0 15px;\n  text-transform: uppercase;\n  font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n}\n\n.splash .fa-spinner {\n  text-align: center;\n  display: inline-block;\n  font-size: 72px;\n  margin-top: 50px;\n}\n\nai-dialog-container.active .ui.modal {\n  display: block;\n}\n\n.page-host {\n}\n\n@media print {\n  .page-host {\n    position: absolute;\n    left: 10px;\n    right: 0;\n    top: 50px;\n    bottom: 0;\n    overflow-y: inherit;\n    overflow-x: inherit;\n  }\n}\n\nsection {\n  margin: 0 20px;\n}\n\n/* Navbar */\n.ui.menu.navbar {\n  margin-top: 0;\n}\n\n.navbar-nav li.loader {\n  margin: 12px 24px 0 6px;\n}\n\n.pictureDetail {\n  max-width: 425px;\n}\n\n/* animate page transitions */\nsection.au-enter-active {\n  -webkit-animation: fadeInRight 1s;\n  animation: fadeInRight 1s;\n}\n\ndiv.au-stagger {\n  /* 50ms will be applied between each successive enter operation */\n  -webkit-animation-delay: 50ms;\n  animation-delay: 50ms;\n}\n\n/* New and Edit Entry Form */\ntimesheet-entry {\n  width: 90%;\n}\n\n.timesheet-entry .ui .calendar {\n  margin-left: 0.5em;\n}\n\n.timesheet-entry + .ui.button {\n  margin-top: 20px;\n}\n\n/** List of previous timesheet entries **/\n.timesheet .ui.fluid.entries {\n  width: 90%;\n}\n\n.timesheet .ui.fluid.entries .title {\n  text-align: left;\n  background-color: #F8F8F9;\n}\n\n/** Admin allocation panel **/\n.user.timesheet .button {\n  vertical-align: middle;\n  margin: auto;\n  margin-left: 0;\n}\n\n/* Cards */\n\n.card-container.au-enter {\n  opacity: 0;\n}\n\n.card-container.au-enter-active {\n  -webkit-animation: fadeIn 2s;\n  animation: fadeIn 2s;\n}\n\n.card {\n  overflow: hidden;\n  position: relative;\n  border: 1px solid #CCC;\n  border-radius: 8px;\n  text-align: center;\n  padding: 0;\n  background-color: #337ab7;\n  color: rgb(136, 172, 217);\n  margin-bottom: 32px;\n  box-shadow: 0 0 5px rgba(0, 0, 0, .5);\n}\n\n.card .content {\n  margin-top: 10px;\n}\n\n.card .content .name {\n  color: white;\n  text-shadow: 0 0 6px rgba(0, 0, 0, .5);\n  font-size: 18px;\n}\n\n.card .header-bg {\n  /* This stretches the canvas across the entire hero unit */\n  position: absolute;\n  top: 0;\n  left: 0;\n  width: 100%;\n  height: 70px;\n  border-bottom: 1px #FFF solid;\n  border-radius: 6px 6px 0 0;\n}\n\n.card .avatar {\n  position: relative;\n  margin-top: 15px;\n  z-index: 100;\n}\n\n.card .avatar img {\n  width: 100px;\n  height: 100px;\n  -webkit-border-radius: 50%;\n  -moz-border-radius: 50%;\n  border-radius: 50%;\n  border: 2px #FFF solid;\n}\n\n/** Flash Messages **/\n.flash {\n    margin-bottom: 20px;\n}\n\n.flash .message {\n    display: none;\n}\n\n.flash .message.background-animation-add,\n.flash .message.background-animation-remove {\n    display: block;\n}\n\n.background-animation-add.positive {\n    display: block;\n    -webkit-animation: flashSuccess 4s;\n    animation: flashSuccess 4s;\n}\n\n.background-animation-add.negative {\n    display: block;\n    -webkit-animation: flashError 8s;\n    animation: flashError 8s;\n    color: white;\n}\n\n@-webkit-keyframes flashSuccess {\n    0% { background-color: white; }\n    25% { background-color: #a3c293; }\n    50% { background-color: white; }\n    75% { background-color: #a3c293; }\n    100% { background-color: white; }\n}\n\n@keyframes flashSuccess {\n    0% { background-color: white; }\n    25% { background-color: #a3c293; }\n    50% { background-color: white; }\n    75% { background-color: #a3c293; }\n    100% { background-color: white; }\n}\n\n@-webkit-keyframes flashError {\n    0% { background-color: #FFF6F6; }\n    5% { background-color: #9f3a38; }\n    15% { background-color: #FFF6F6; }\n}\n\n@keyframes flashError {\n    0% { background-color: #FFF6F6; }\n    5% { background-color: #9f3a38; }\n    15% { background-color: #FFF6F6; }\n}\n\n@media only screen and (max-device-width: 767px) {\n\n  .timesheet-entry.ui.form .two.hours.fields > .field {\n    width: 50% !important;\n  }\n\n  .timesheet-entry.ui.form .two.hours.fields > .field input {\n    width: 60px;\n  }\n\n  .ui.monthly.timesheet.table thead {\n    display: none;\n  }\n}"; });
-define('text!components/top-bar.html', ['module'], function(module) { module.exports = "<template bindable=\"router\">\n\n    <confirmation approve-callback></confirmation>\n\n    <div class=\"top-bar ui menu navbar\">\n        <div class=\"right menu\">\n\n\n            <a \n                route-href=\"route: admin-planning\"\n                class=\"item\"\n            >\n                <i class=\"calculator icon\"></i>\n            </a>\n\n            <a \n                route-href=\"route: timesheets\"\n                class=\"item\"\n            >\n                <i class=\"add to calendar icon\"></i>\n            </a>\n\n            <a \n                route-href=\"route: planning\"\n                class=\"item\"\n            >\n                <i class=\"calendar icon\"></i>\n            </a>\n\n            <a \n                route-href=\"route: user\"\n                class=\"item\"\n            >\n                <i class=\"user icon\"></i>\n            </a>\n\n            <a href=\"#\" class=\"item\" click.delegate=\"logout()\">\n                 <i class=\"sign out icon\"></i>\n            </a>\n            \n        </div>\n    </div>\n</template>"; });
+define('text!styles/styles.css', ['module'], function(module) { module.exports = "body {\n  margin: 0;\n}\n\n.splash {\n  text-align: center;\n  margin: 10% 0 0 0;\n  box-sizing: border-box;\n}\n\n.splash .message {\n  font-size: 72px;\n  line-height: 72px;\n  text-shadow: rgba(0, 0, 0, 0.5) 0 0 15px;\n  text-transform: uppercase;\n  font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n}\n\n.splash .fa-spinner {\n  text-align: center;\n  display: inline-block;\n  font-size: 72px;\n  margin-top: 50px;\n}\n\nai-dialog-container.active .ui.modal {\n  display: block;\n}\n\n.page-host {\n}\n\n@media print {\n  .page-host {\n    position: absolute;\n    left: 10px;\n    right: 0;\n    top: 50px;\n    bottom: 0;\n    overflow-y: inherit;\n    overflow-x: inherit;\n  }\n}\n\nsection {\n  margin: 0 20px;\n}\n\n/* Navbar */\n.ui.menu.navbar {\n  margin-top: 0;\n}\n\n.navbar-nav li.loader {\n  margin: 12px 24px 0 6px;\n}\n\n.pictureDetail {\n  max-width: 425px;\n}\n\n/* animate page transitions */\nsection.au-enter-active {\n  -webkit-animation: fadeInRight 1s;\n  animation: fadeInRight 1s;\n}\n\ndiv.au-stagger {\n  /* 50ms will be applied between each successive enter operation */\n  -webkit-animation-delay: 50ms;\n  animation-delay: 50ms;\n}\n\n/* Login aligned in middle */\ndiv.ui.login.grid {\n  height: 100%;\n}\n\n/* New and Edit Entry Form */\ntimesheet-entry {\n  width: 90%;\n}\n\n.timesheet-entry .ui.calendar {\n  margin-left: 0.5em;\n}\n\n.timesheet-entry + .ui.button {\n  margin-top: 20px;\n}\n\n/** List of previous timesheet entries **/\n.timesheet .ui.fluid.entries {\n  width: 90%;\n}\n\n.timesheet .ui.fluid.entries .title {\n  text-align: left;\n  background-color: #F8F8F9;\n}\n\n/** Admin allocation panel **/\n\n.user.timesheet,\n.user.report {\n  margin-bottom: 20px;\n}\n\n.user.timesheet .button {\n  vertical-align: middle;\n  margin: auto;\n  margin-left: 0;\n}\n\n/* Cards */\n\n.card-container.au-enter {\n  opacity: 0;\n}\n\n.card-container.au-enter-active {\n  -webkit-animation: fadeIn 2s;\n  animation: fadeIn 2s;\n}\n\n.card {\n  overflow: hidden;\n  position: relative;\n  border: 1px solid #CCC;\n  border-radius: 8px;\n  text-align: center;\n  padding: 0;\n  background-color: #337ab7;\n  color: rgb(136, 172, 217);\n  margin-bottom: 32px;\n  box-shadow: 0 0 5px rgba(0, 0, 0, .5);\n}\n\n.card .content {\n  margin-top: 10px;\n}\n\n.card .content .name {\n  color: white;\n  text-shadow: 0 0 6px rgba(0, 0, 0, .5);\n  font-size: 18px;\n}\n\n.card .header-bg {\n  /* This stretches the canvas across the entire hero unit */\n  position: absolute;\n  top: 0;\n  left: 0;\n  width: 100%;\n  height: 70px;\n  border-bottom: 1px #FFF solid;\n  border-radius: 6px 6px 0 0;\n}\n\n.card .avatar {\n  position: relative;\n  margin-top: 15px;\n  z-index: 100;\n}\n\n.card .avatar img {\n  width: 100px;\n  height: 100px;\n  -webkit-border-radius: 50%;\n  -moz-border-radius: 50%;\n  border-radius: 50%;\n  border: 2px #FFF solid;\n}\n\n/** Flash Messages **/\n.flash {\n    margin-bottom: 20px;\n}\n\n.flash .message {\n    display: none;\n}\n\n.flash .message.background-animation-add,\n.flash .message.background-animation-remove {\n    display: block;\n}\n\n.background-animation-add.positive {\n    display: block;\n    -webkit-animation: flashSuccess 4s;\n    animation: flashSuccess 4s;\n}\n\n.background-animation-add.negative {\n    display: block;\n    -webkit-animation: flashError 8s;\n    animation: flashError 8s;\n    color: white;\n}\n\n@-webkit-keyframes flashSuccess {\n    0% { background-color: white; }\n    25% { background-color: #a3c293; }\n    50% { background-color: white; }\n    75% { background-color: #a3c293; }\n    100% { background-color: white; }\n}\n\n@keyframes flashSuccess {\n    0% { background-color: white; }\n    25% { background-color: #a3c293; }\n    50% { background-color: white; }\n    75% { background-color: #a3c293; }\n    100% { background-color: white; }\n}\n\n@-webkit-keyframes flashError {\n    0% { background-color: #FFF6F6; }\n    5% { background-color: #9f3a38; }\n    15% { background-color: #FFF6F6; }\n}\n\n@keyframes flashError {\n    0% { background-color: #FFF6F6; }\n    5% { background-color: #9f3a38; }\n    15% { background-color: #FFF6F6; }\n}\n\n@media only screen and (max-device-width: 767px) {\n\n  .timesheet-entry .ui.calendar {\n    margin-left: 0;\n  }\n\n  .timesheet-entry.ui.form .two.hours.fields > .field {\n    width: 50% !important;\n  }\n\n  .timesheet-entry.ui.form .two.hours.fields > .field input {\n    width: 60px;\n  }\n\n  .ui.monthly.timesheet.table thead {\n    display: none;\n  }\n}"; });
+define('text!components/top-bar.html', ['module'], function(module) { module.exports = "<template bindable=\"router\">\n\n    <confirmation approve-callback></confirmation>\n\n    <div class=\"top-bar ui menu navbar\">\n        <div class=\"right menu\">\n\n\n            <a \n                route-href=\"route: admin-planning\"\n                class=\"item\"\n                if.bind=\"isAdmin\"\n            >\n                <i class=\"calculator icon\"></i>\n            </a>\n\n            <a \n                route-href=\"route: timesheets\"\n                class=\"item\"\n            >\n                <i class=\"add to calendar icon\"></i>\n            </a>\n\n            <a \n                route-href=\"route: planning\"\n                class=\"item\"\n            >\n                <i class=\"calendar icon\"></i>\n            </a>\n\n            <a \n                route-href=\"route: user\"\n                class=\"item\"\n            >\n                <i class=\"user icon\"></i>\n            </a>\n\n            <a href=\"#\" class=\"item\" click.delegate=\"logout()\">\n                 <i class=\"sign out icon\"></i>\n            </a>\n            \n        </div>\n    </div>\n</template>"; });
 define('text!components/user-app-router.html', ['module'], function(module) { module.exports = "<template>\n\n    <require from=\"./top-bar\"></require>\n\n    <top-bar router.bind=\"router\"></top-bar>\n\n    <div class=\"divider\"></div>\n\n    <nav-bar router.bind=\"router\"></nav-bar>\n\n    <div class=\"full height ui grid\">\n        <div class=\"row\">\n            <compose class=\"sixteen wide column\" view-model=\"resources/flash/flash\"></compose>\n        </div>\n\n        <div class=\"row\">\n\n            <div class=\"page-host centered fourteen wide column pusher\">\n                <div class=\"main-panel-container\">\n                    <router-view></router-view>\n                </div>\n            </div>\n\n        </div>\n    </div>\n\n</template>\n"; });
 define('text!pages/admin/admin-panel.html', ['module'], function(module) { module.exports = "<template>\n\n    <require from=\"./users-timesheets\"></require>\n    <require from=\"./admin-reports\"></require>\n\n    <div class=\"ui two item stackable tabs pointing huge admin panel menu\">        \n          <a class=\"active item\" data-tab=\"definition\"><i class=\"checkmark icon\"></i></a>\n          <a class=\"item\" data-tab=\"reports\"><i class=\"pie chart icon\"></i></a>\n    </div>\n\n    <div data-tab=\"definition\" class=\"ui tab segment active\">\n        <users-timesheets\n            month.bind=\"month\"\n        >\n        </users-timesheets>\n    </div>\n    <div data-tab=\"reports\" class=\"ui tab segment\">\n        <admin-reports\n            month.bind=\"month\"\n        >\n        </admin-reports>\n    </div>\n\n</template>"; });
-define('text!pages/admin/admin-reports.html', ['module'], function(module) { module.exports = "<template>\n\n    <div class=\"admin reports ui container fluid\">\n\n        <h2>${month}</h2>\n        <div class=\"right aligned ui segment\">\n            <a id=\"csv-export-link\" t=\"download\">Download</a>\n        </div>\n\n        <div class=\"ui grid basic segment\">\n            <div \n                class=\"ui toggle checkbox\"\n                id=\"showMonthAggregate\"\n            >\n                <input\n                    type=\"checkbox\"\n                    name=\"monthaggregate\"\n                >\n                <label t=\"report:showmonthaggregate\">Show month aggregate</label>\n            </div>\n        </div>\n\n        <div \n            class=\"user report\"\n            if.bind=\"!showMonthAggregate\"\n            repeat.for=\"[userName, userReport] of allocationUserReports\"\n        >\n            <h3>${ userName }</h3>\n            <div class=\"right aligned ui segment\">\n                <a \n                    id=\"${userName}-csv-export-link\"\n                    t=\"download\"\n                    data-user=\"${userName}\"\n                >\n                    Download\n                </a>\n            </div>\n\n            <table class=\"ui celled table\">\n                <thead>\n                    <tr>\n                        <th t=\"allocation\">Allocation</th>\n                        <th t=\"ratio\">Ratio</th>\n                        <th t=\"duration\">Duration</th>\n                        <th t=\"salary\">Salary</th>\n                    </tr>\n                </thead>\n                <tbody>\n                    <tr repeat.for=\"report of userReport.entries\">\n                        <td>${report.allocationName}</td>\n                        <td>${report.ratio.toFixed(2)}%</td>\n                        <td>${report.duration.toFixed(2)}h</td>\n                        <td>${report.salary.toFixed(2)}$</td>\n                    </tr>\n                </tbody>\n                <tfoot>\n                    <tr>\n                        <th t=\"total\"></th>\n                        <th>${ userReport.totals.ratio.toFixed(2) }%</th>\n                        <th>${ userReport.totals.duration.toFixed(2) }h</th>\n                        <th>${ userReport.totals.salary.toFixed(2) }$</th>\n                    </tr>\n                </tfoot>\n            </table>\n        </div>\n\n        <table\n            if.bind=\"showMonthAggregate\" \n            class=\"ui celled table\"\n        >\n            <thead>\n                <tr>\n                    <th t=\"allocation\">Allocation</th>\n                    <th t=\"ratio\">Ratio</th>\n                    <th t=\"duration\">Duration</th>\n                    <th t=\"salary\">Salary</th>\n                </tr>\n            </thead>\n            <tbody>\n                <tr repeat.for=\"report of allocationReports.entries\">\n                    <td>${report.allocationName}</td>\n                    <td>${report.ratio.toFixed(2)}%</td>\n                    <td>${report.duration.toFixed(2)}h</td>\n                    <td>${report.salary.toFixed(2)}$</td>\n                </tr>\n            </tbody>\n            <tfoot>\n                <tr>\n                    <th t=\"total\"></th>\n                    <th>${ allocationReports.totals.ratio.toFixed(2) }%</th>\n                    <th>${ allocationReports.totals.duration.toFixed(2) }h</th>\n                    <th>${ allocationReports.totals.salary.toFixed(2) }$</th>\n            </tfoot>\n        </table>\n\n    </div>\n\n</template>"; });
+define('text!pages/admin/admin-reports.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"../../resources/dropdown/dropdown\"></require>\n    <require from=\"./admin-report\"></require>\n    \n    <div class=\"admin reports ui container fluid\">\n\n        <h2>${month}</h2>\n        <div class=\"ui horizontal segments\">       \n            <div class=\"left aligned ui segment\">\n                <dropdown \n                    selected-entry.two-way=\"accountingRuleEndKey\"\n                    route=\"accounting\"\n                    name=\"timesheet:accountingrules\"\n                    required.bind=true\n                    allow-add.bind=false\n                >\n                </dropdown>\n            </div>\n            <div class=\"right aligned ui segment\">\n                <a id=\"csv-export-link\" t=\"download\">Download</a>\n            </div>\n        </div>\n\n        <div class=\"ui grid basic segment\">\n            <div \n                class=\"ui toggle checkbox\"\n                id=\"showMonthAggregate\"\n            >\n                <input\n                    type=\"checkbox\"\n                    name=\"monthaggregate\"\n                >\n                <label t=\"report:showmonthaggregate\">Show month aggregate</label>\n            </div>\n        </div>\n\n        <div \n            class=\"user report\"\n            if.bind=\"!showMonthAggregate\"\n            repeat.for=\"[userName, userReport] of allocationUserReports\"\n        >\n            <h3>${ userName }</h3>\n            <div class=\"right aligned ui segment\">\n                <a \n                    id=\"${userName}-csv-export-link\"\n                    t=\"download\"\n                    data-user=\"${userName}\"\n                >\n                    Download\n                </a>\n            </div>\n\n            <admin-report entries.bind=\"userReport.entries\" totals.bind=\"userReport.totals\"></admin-report>\n            \n        </div>\n\n        <admin-report\n            if.bind=\"showMonthAggregate\"\n            entries.bind=\"allocationReports.entries\"\n            totals.bind=\"allocationReports.totals\"\n        >\n        </admin-report>        \n\n    </div>\n\n</template>"; });
 define('text!pages/admin/admin-router.html', ['module'], function(module) { module.exports = "<template>\n    <router-view></router-view>\n</template>"; });
 define('text!pages/admin/planning.html', ['module'], function(module) { module.exports = "<template>\n\n    <div \n        class=\"ui calendar\"\n        data-property=\"date\"\n    >\n        <div class=\"ui input left icon\">\n            <input\n                class=\"\"\n                type=\"hidden\"\n            />\n        </div>\n    </div>      \n\n</template>"; });
-define('text!pages/admin/user-timesheet.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"../../resources/formats/date-format\"></require>\n    <require from=\"../../resources/formats/truncate\"></require>\n\n    <require from=\"../../resources/dropdown/dropdown\"></require>\n\n    <div class=\"username\"><h2>${ userName }</h2></div>\n    \n    <div class=\"ui middle aligned segment\">\n    <form\n        class=\"ui form\"\n        validation-renderer=\"semantic-form\"\n        validation-errors.bind=\"errors\"\n    >\n        <div class=\"three fields\">\n            <div class=\"salary inline four wide field\">\n                <label>${ 'salary' | t}:</label>\n                <input type=\"text\" value.bind=\"timesheet.salary & validate\" change.delegate=\"saveTimesheet()\"/>\n            </div>\n            <div class=\"salary inline four wide field\">\n                <label>${ 'charges' | t}:</label>\n                <input type=\"text\" value.bind=\"timesheet.charges & validate\" change.delegate=\"saveTimesheet()\"/>\n            </div>\n            <div class=\"inline middle aligned four wide field\">\n                <button\n                    class=\"ui small primary button\"\n                    tabindex=\"0\"\n                    t=\"save\"\n                    click.delegate=\"saveTimesheet(username)\"\n                >\n                    Save\n                </button>    \n            </div>\n    </form>\n        </div>\n    <form\n        class=\"ui user timesheet form\"\n        validation-renderer=\"semantic-form\"\n        validation-errors.bind=\"errors\"\n    >\n\n        <table class=\"ui striped fixed monthly timesheet table\">\n            <thead>\n                <tr>\n                    <th t=\"date\">Date</th>\n                    <th t=\"purpose\">Purpose</th>\n                    <th t=\"duration\">Duration</th>\n                    <th t=\"description\">Observation</th>\n                    <th t=\"allocation\">Allocation</th>\n                </tr>\n            </thead>\n            <tbody>\n                <tr\n                    repeat.for=\"entity of timesheet.entries\"\n                    click.delegate=\"openEntry(entity.id)\"\n                    if.bind=\"entity.allocation === undefined || entity.allocation === null || !unallocatedOnly\"\n                >\n                    <td>${ entity.date | dateFormat }</td>\n                    <td>${ purposes.get(entity.purpose) }</td>\n                    <td>${ entity.duration }${ 'h' | t }</td>\n                    <td>${ entity.observation | truncate: 40 }</td>\n                    <td onclick=\"event.stopPropagation();\" style=\"overflow:visible;\">\n                        <dropdown \n                            selected-entry.two-way=\"entity.allocation\"\n                            route=\"allocation\"\n                            name=\"timesheet:allocation\"\n                            required.bind=false\n                            allow-add.bind=true\n                            select-action.call=\"allocationSelected(dropdown)\"\n                            add-action.call=\"allocationAdded(dropdown)\"\n                            data-username=\"${username}\"\n                            data-entryid=\"${entity.id}\"\n                        >\n                        </dropdown>\n                    </td>\n                </tr>\n            </tbody>\n        </table>\n\n    </form>\n\n</template>"; });
-define('text!pages/admin/users-timesheets.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"./user-timesheet\"></require>\n\n    <div class=\"ui grid basic segment\">\n        <div \n            class=\"ui toggle checkbox\"\n            id=\"showAll\"\n        >\n            <input\n                type=\"checkbox\"\n                name=\"allentries\"\n            >\n            <label t=\"timesheet:showallentries\">Show all entries</label>\n        </div>\n    </div>\n\n\n    <div \n        repeat.for=\"[username, timesheet] of timesheets\"\n        class=\"user timesheet\"\n    >\n        <user-timesheet\n            class=\"\"\n            save-action.call=\"saveEntry(entity)\"\n            timesheet.bind=\"timesheet\"\n            user-name.bind=\"username\"\n            purposes.bind=\"purposes\"\n            unallocated-only.bind=\"unallocatedOnly\"\n        >\n        </user-timesheet>\n\n    </div>\n\n</template>"; });
+define('text!pages/admin/user-timesheet.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"../../resources/formats/date-format\"></require>\n    <require from=\"../../resources/formats/truncate\"></require>\n\n    <require from=\"../../resources/dropdown/dropdown\"></require>\n\n    <div class=\"username\"><h2>${ userName }</h2></div>\n    \n    <div class=\"${ userName } ui middle aligned segment\">\n        <form\n            class=\"ui form\"\n            validation-renderer=\"semantic-form\"\n            validation-errors.bind=\"errors\"\n        >\n            <div class=\"three fields\">\n                <div class=\"salary inline four wide field\">\n                    <label>${ 'salary' | t}:</label>\n                    <input type=\"text\" value.bind=\"timesheet.salary & validate\" change.delegate=\"saveTimesheet(userName)\"/>\n                </div>\n                <div class=\"precarite ui checkbox inline four wide field\">\n                    <label>${ 'precarite' | t}?</label>\n                    <input type=\"checkbox\" value.bind=\"timesheet.precarite & validate\" change.delegate=\"saveTimesheet(userName)\"/>\n                </div>\n                <div class=\"inline middle aligned four wide field\">\n                    <button\n                        class=\"ui small primary button\"\n                        tabindex=\"0\"\n                        t=\"save\"\n                        click.delegate=\"saveTimesheet(userName)\"\n                    >\n                        Save\n                    </button>    \n                </div>\n            </div>\n        </form>\n    </div>\n    \n    <form\n        class=\"ui user timesheet form\"\n        validation-renderer=\"semantic-form\"\n        validation-errors.bind=\"errors\"\n    >\n\n        <table class=\"ui striped fixed monthly timesheet table\">\n            <thead>\n                <tr>\n                    <th t=\"date\">Date</th>\n                    <th t=\"purpose\">Purpose</th>\n                    <th t=\"duration\">Duration</th>\n                    <th t=\"description\">Observation</th>\n                    <th t=\"allocation\">Allocation</th>\n                </tr>\n            </thead>\n            <tbody>\n                <tr\n                    repeat.for=\"entity of timesheet.entries\"\n                    click.delegate=\"openEntry(entity.id)\"\n                    if.bind=\"entity.allocation === undefined || entity.allocation === null || !unallocatedOnly\"\n                >\n                    <td>${ entity.date | dateFormat }</td>\n                    <td>${ purposes.get(entity.purpose) }</td>\n                    <td>${ entity.duration }${ 'h' | t }</td>\n                    <td>${ entity.observation | truncate: 40 }</td>\n                    <td onclick=\"event.stopPropagation();\" style=\"overflow:visible;\">\n                        <dropdown \n                            selected-entry.two-way=\"entity.allocation\"\n                            route=\"allocation\"\n                            name=\"timesheet:allocation\"\n                            required.bind=false\n                            allow-add.bind=true\n                            select-action.call=\"allocationSelected(dropdown)\"\n                            add-action.call=\"allocationAdded(dropdown)\"\n                            data-username=\"${username}\"\n                            data-entryid=\"${entity.id}\"\n                        >\n                        </dropdown>\n                    </td>\n                </tr>\n            </tbody>\n        </table>\n\n    </form>\n\n</template>"; });
+define('text!pages/admin/users-timesheets.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"./user-timesheet\"></require>\n\n    <div class=\"ui grid basic segment\">\n        <div \n            class=\"ui toggle checkbox\"\n            id=\"showAll\"\n        >\n            <input\n                type=\"checkbox\"\n                name=\"allentries\"\n            >\n            <label t=\"timesheet:showallentries\">Show all entries</label>\n        </div>\n    </div>\n\n\n    <div \n        repeat.for=\"[username, timesheet] of timesheets\"\n        class=\"user timesheet\"\n    >\n        <user-timesheet\n            class=\"\"\n            save-action.call=\"saveEntry(entity)\"\n            timesheet.bind=\"timesheet\"\n            user-name.bind=\"username\"\n            purposes.bind=\"purposes\"\n            unallocated-only.bind=\"unallocatedOnly\"\n            accounting-rules.bind=\"accountingRules\"\n        >\n        </user-timesheet>\n\n    </div>\n\n</template>"; });
 define('text!pages/timesheets/monthly-timesheet.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"../../resources/formats/date-format\"></require>\n    <require from=\"../../resources/formats/truncate\"></require>\n\n    <table class=\"ui striped fixed monthly timesheet table\">\n        <thead>\n            <tr>\n                <th t=\"date\">Date</th>\n                <th t=\"purpose\">Purpose</th>\n                <th t=\"duration\">Duration</th>\n                <th t=\"interpret\">Interpret</th>\n                <th t=\"interpret-time\">Time</th>\n                <th t=\"description\">Observation</th>\n                <th t=\"travel\">Travel</th>\n            </tr>\n        </thead>\n        <tbody>\n            <tr repeat.for=\"entity of entity.entries\" click.delegate=\"openEntry(entity.id)\">\n                <td>${ entity.date | dateFormat }</td>\n                <td>${ purposes.get(entity.purpose) }</td>\n                <td>${ entity.duration }${ 'h' | t }</td>\n                <td>${ interprets.get(entity.interpret) }</td>\n                <td>${ entity.interpret_duration }${ 'h' }</td>\n                <td>${ entity.observation | truncate: 40 }</td>\n                <td>${ entity.travel | truncate: 40 }</td>\n            </tr>\n        </tbody>\n    </table>\n\n</template>"; });
 define('text!pages/timesheets/planning-router.html', ['module'], function(module) { module.exports = "<template>\n    <router-view></router-view>\n</template>"; });
 define('text!pages/timesheets/planning.html', ['module'], function(module) { module.exports = "<template>\n\n    <div \n        class=\"ui calendar\"\n        data-property=\"date\"\n    >\n        <div class=\"ui input left icon\">\n            <input\n                class=\"\"\n                type=\"hidden\"\n            />\n        </div>\n    </div>      \n\n</template>"; });
@@ -11695,4 +12019,5 @@ define('text!resources/confirmation/delete-button.html', ['module'], function(mo
 define('text!resources/dropdown/dropdown.html', ['module'], function(module) { module.exports = "<template>\n\n    <div\n        class=\"ui fluid dropdown search selection ${multiple === true?'multiple':''}\"\n        tabindex=\"0\"\n    >\n        <input\n            if.bind=\"!multiple\"\n            type=\"hidden\"\n            name.bind=\"name\"\n            value.bind=\"selectedEntry\"\n        />\n\n        <select\n            if.bind=\"multiple === true\"\n            name.bind=\"name\"\n            multiple=\"\"\n        >        \n            <option if.bind=\"!required && !multiple\" t=\"All\" data-value=\"\" value=\"\">All</option>\n            <option\n                repeat.for=\"entry of entries\"\n                value=\"${entry.id}\"\n            >\n                ${entry.doc.name}\n            </option>\n        </select>\n        \n        <i class=\"dropdown icon\"></i>\n        <div \n            class=\"\n                ${selectedEntry?'':'default'}\n                text\n            \"\n            t=\"${name}\"\n            data-default=\"${name|t}\"\n            innerHTML.bind=\"selectedEntryName\"\n        >\n            Entry\n        </div>\n        <div class=\"menu transition\" tabindex=\"-1\">\n            <div if.bind=\"!required && !multiple\" class=\"item\" t=\"All\" data-value=\"\">All</div>\n            <div\n                repeat.for=\"entry of entries\"\n                data-value=\"${entry.id}\"\n                class=\"\n                    item\n                    ${selectedEntry == entry.id ? 'active selected':''}\n                \"\n            >\n                ${entry.doc.name}\n            </div>\n        </div>        \n    </div>\n\n</template>"; });
 define('text!resources/flash/flash.html', ['module'], function(module) { module.exports = "<template>\n    <div class=\"one flash item\">\n        <div \n            class=\"ui message\"\n        >\n            ${ message }\n        </div>\n    </div>\n</template>"; });
 define('text!resources/pagination/paginator.html', ['module'], function(module) { module.exports = "<template>\n    <div \n        if.bind=\"pagination.numberPages > 1 && hasLoadMore\"\n        class=\"pagination more\"\n    >\n        <button \n            class=\"fluid ui primary basic button\"\n            click.delegate=\"loadMore()\"\n            t=\"paginate.more\"\n        >\n        </button>\n    </div>\n\n    <div if.bind=\"!hasLoadMore\">\n\n        <div \n            if.bind=\"pagination.numberPages > 1\"\n            class=\"ui stackable pagination menu\"\n        >\n            <a \n                repeat.for=\"i of pagination.startPages\"\n                class=\"\n                    ${i+1 === pagination.currentPage ? 'active' : ''}\n                    item\n                \"\n                click.delegate=\"paginate(i+1)\"\n            >\n                ${i+1}\n            </a>     \n            <div\n                repeat.for=\"i of pagination.firstDisabledPages\" \n                class=\"disabled item\">\n                ...\n            </div>\n            <a \n                repeat.for=\"i of pagination.visiblePages\"\n                class=\"\n                    ${i+1 === pagination.currentPage ? 'active' : ''}\n                    item\n                \"\n                click.delegate=\"paginate(i+1)\"\n            >\n                ${i+1}\n            </a>\n            <div\n                repeat.for=\"i of pagination.lastDisabledPages\" \n                class=\"disabled item\">\n                ...\n            </div>\n            <a \n                repeat.for=\"i of pagination.endPages\"\n                class=\"\n                    ${i+1 === pagination.currentPage ? 'active' : ''}\n                    item\n                \"\n                click.delegate=\"paginate(i+1)\"\n            >\n                ${i+1}\n            </a> \n        </div>\n        <div class=\"ui pagination action input pages\">\n            <input\n                type=\"text\"\n                value.bind=\"pagination.itemsPerPage\"\n            >\n            <div \n                class=\"ui button\"\n                click.delegate=\"paginate()\"\n                t=\"paginate.go\"\n            >\n                Go\n            </div>\n        </div>\n    </div>\n\n</template>"; });
+define('text!pages/admin/admin-report.html', ['module'], function(module) { module.exports = "<template>\n\n    <table class=\"ui celled table\">\n        <thead>\n            <tr>\n                <th t=\"allocation\">Allocation</th>\n                <th t=\"ratio\">Ratio</th>\n                <th t=\"duration\">Duration</th>\n                <th t=\"salary\">Salary (641)</th>\n                <th t=\"charges\">Charges (645)</th>\n                <th t=\"provisionCP\">Prov. (641200)</th>\n                <th t=\"provision-charges\">Prov. Charges (645000)</th>\n                <th t=\"precaritebrut\">Precarite Brut</th>\n                <th t=\"precaritecharges\">Precarite Charges</th>                \n            </tr>\n        </thead>\n        <tbody>\n            <tr repeat.for=\"report of entries\">\n                <td>${report.allocationName}</td>\n                <td>${report.ratio.toFixed(2)}%</td>\n                <td>${report.duration.toFixed(2)}h</td>\n                <td>${report.salary.toFixed(2)}$</td>\n                <td>${report.accounts.charges.toFixed(2)}$</td>\n                <td>${report.accounts.provisionCPBrut.toFixed(2)}${ '$' | t }</td>\n                <td>${report.accounts.provisionCPCharges.toFixed(2)}${ '$' | t }</td>\n                <td>${report.accounts.primePrecariteBrut.toFixed(2)}${ '$' | t }</td>\n                <td>${report.accounts.primePrecariteCharges.toFixed(2)}${ '$' | t }</td>\n            </tr>\n        </tbody>\n        <tfoot>\n            <tr>\n                <th t=\"total\"></th>\n                <th>${ totals.ratio.toFixed(2) }%</th>\n                <th>${ totals.duration.toFixed(2) }h</th>\n                <th>${ totals.salary.toFixed(2) }${ '$' | t }</th>\n                <th>${ totals.accounts.charges.toFixed(2) }${ '$' | t }</th>\n                <th>${ totals.accounts.provisionCPBrut.toFixed(2) }${ '$' | t }</th>\n                <th>${ totals.accounts.provisionCPCharges.toFixed(2) }${ '$' | t }</th>\n                <th>${ totals.accounts.primePrecariteBrut.toFixed(2) }${ '$' | t }</th>\n                <th>${ totals.accounts.primePrecariteCharges.toFixed(2) }${ '$' | t }</th>\n            </tr>\n            <tr>\n                <th t=\"netpayable\"></th>\n                <th>${ totals.accounts.netPayable.toFixed(2) }${ '$' | t }</th>\n            </tr>\n            <tr>\n                <th t=\"ursaff\"></th>\n                <th>${ totals.accounts.ursaff.toFixed(2) }${ '$' | t }</th>\n            </tr>\n            <tr>\n                <th t=\"provisionCP\"></th>\n                <th>${ totals.accounts.provisionCP.toFixed(2) }${ '$' | t }</th>\n            </tr>\n            <tr>\n                <th t=\"provisionprecarite\"></th>\n                <th>${ totals.accounts.provisionPrecarite.toFixed(2) }${ '$' | t }</th>\n            </tr>\n        </tfoot>\n    </table>\n\n</template>"; });
 //# sourceMappingURL=app-bundle.js.map

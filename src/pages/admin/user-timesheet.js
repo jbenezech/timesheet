@@ -17,6 +17,7 @@ export class UserTimesheet {
     @bindable userName;
     @bindable purposes = new Map();
     @bindable unallocatedOnly;
+    @bindable accountingRules;
     salary;
 
     constructor(element, session,db, i18n, ea, bindingEngine, controller, router) {
@@ -32,8 +33,15 @@ export class UserTimesheet {
 
     attached() {
 
+        $('.' + this.userName + ' .precarite.checkbox').checkbox();
+        if (this.timesheet.precarite) {
+            $('.' + this.userName + ' .precarite.checkbox').checkbox('set checked');
+        }
+
         ValidationRules
             .ensure('salary').required()
+            .matches(/^[\d]+[\.|]?[\d]*$/).withMessage(this.i18n.tr('error_number'))
+            .ensure('charges').required()
             .matches(/^[\d]+[\.|]?[\d]*$/).withMessage(this.i18n.tr('error_number'))
             .on(this.timesheet);
 
@@ -51,14 +59,14 @@ export class UserTimesheet {
 
         this.calculateRatios();
 
-        this.saveTimesheet();
+        this.saveTimesheet(userName);
     }
 
     allocationAdded(dropdown) {
         //add the newly added entry to all dropdowns on the page
         $('.user.timesheet dropdown').each( function() {
             this.au.controller.viewModel.entries = dropdown.entries;
-        })
+        });
     }
 
     calculateRatios() {
@@ -71,13 +79,15 @@ export class UserTimesheet {
 
     }
 
-    saveTimesheet() {
+    saveTimesheet(userName) {
 
         let errors = this.controller.validate().then( result => {
 
             if (!result.valid) {
                 return;
             }
+
+            this.timesheet.precarite = $('.' + userName + ' .precarite.checkbox').checkbox('is checked');
 
             //save and retrieve the latest revision of the timesheet for that user
             this.db.save('timesheet-' + this.userName, this.timesheet).then( () => {

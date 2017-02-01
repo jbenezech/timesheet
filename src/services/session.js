@@ -30,11 +30,12 @@ export class Session {
 
     start() {
         let me = this;
-        console.log("START");
+
         return this.loadUserFromBackend().then( () => {
-            console.log("STARTED");
+
             me.started = true;
-        console.log("started");
+            return true;
+            
         }).catch (function (err) {
             console.log(err);
         });
@@ -81,6 +82,10 @@ export class Session {
         return this.user;
     }
     
+    userHasRole(role) {
+        return this.user !== undefined && this.user !== null && this.user.roles.includes(role);
+    }
+
     loadUserFromBackend() {
 
         if (localStorage.getItem('aurelia_token') === null) {
@@ -107,7 +112,7 @@ export class Session {
 
         let me = this;
 
-        let user = db.get(
+        return db.get(
             'org.couchdb.user:' + username,
             {
                 include_docs: true
@@ -115,11 +120,11 @@ export class Session {
         ).then(function (result) {
             me.user = result;
             me.persistToStorage();
+            return result;
         }).catch(function (err) {
             console.log(err);
         });
        
-        return new Promise.resolve(true);        
     }
 
     invalidate() {

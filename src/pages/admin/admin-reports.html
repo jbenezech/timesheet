@@ -1,10 +1,24 @@
 <template>
-
+    <require from="../../resources/dropdown/dropdown"></require>
+    <require from="./admin-report"></require>
+    
     <div class="admin reports ui container fluid">
 
         <h2>${month}</h2>
-        <div class="right aligned ui segment">
-            <a id="csv-export-link" t="download">Download</a>
+        <div class="ui horizontal segments">       
+            <div class="left aligned ui segment">
+                <dropdown 
+                    selected-entry.two-way="accountingRuleEndKey"
+                    route="accounting"
+                    name="timesheet:accountingrules"
+                    required.bind=true
+                    allow-add.bind=false
+                >
+                </dropdown>
+            </div>
+            <div class="right aligned ui segment">
+                <a id="csv-export-link" t="download">Download</a>
+            </div>
         </div>
 
         <div class="ui grid basic segment">
@@ -36,62 +50,16 @@
                 </a>
             </div>
 
-            <table class="ui celled table">
-                <thead>
-                    <tr>
-                        <th t="allocation">Allocation</th>
-                        <th t="ratio">Ratio</th>
-                        <th t="duration">Duration</th>
-                        <th t="salary">Salary</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr repeat.for="report of userReport.entries">
-                        <td>${report.allocationName}</td>
-                        <td>${report.ratio.toFixed(2)}%</td>
-                        <td>${report.duration.toFixed(2)}h</td>
-                        <td>${report.salary.toFixed(2)}$</td>
-                    </tr>
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <th t="total"></th>
-                        <th>${ userReport.totals.ratio.toFixed(2) }%</th>
-                        <th>${ userReport.totals.duration.toFixed(2) }h</th>
-                        <th>${ userReport.totals.salary.toFixed(2) }$</th>
-                    </tr>
-                </tfoot>
-            </table>
+            <admin-report entries.bind="userReport.entries" totals.bind="userReport.totals"></admin-report>
+            
         </div>
 
-        <table
-            if.bind="showMonthAggregate" 
-            class="ui celled table"
+        <admin-report
+            if.bind="showMonthAggregate"
+            entries.bind="allocationReports.entries"
+            totals.bind="allocationReports.totals"
         >
-            <thead>
-                <tr>
-                    <th t="allocation">Allocation</th>
-                    <th t="ratio">Ratio</th>
-                    <th t="duration">Duration</th>
-                    <th t="salary">Salary</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr repeat.for="report of allocationReports.entries">
-                    <td>${report.allocationName}</td>
-                    <td>${report.ratio.toFixed(2)}%</td>
-                    <td>${report.duration.toFixed(2)}h</td>
-                    <td>${report.salary.toFixed(2)}$</td>
-                </tr>
-            </tbody>
-            <tfoot>
-                <tr>
-                    <th t="total"></th>
-                    <th>${ allocationReports.totals.ratio.toFixed(2) }%</th>
-                    <th>${ allocationReports.totals.duration.toFixed(2) }h</th>
-                    <th>${ allocationReports.totals.salary.toFixed(2) }$</th>
-            </tfoot>
-        </table>
+        </admin-report>        
 
     </div>
 

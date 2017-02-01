@@ -19,9 +19,12 @@ export class DBService {
     lastSyncs = new Map();
 
     //db prefixes for user-specific databases
-    userDBs = [
+    userDBPrefixes = [
         'timesheet'
     ];
+
+    //list of user db names that have been loaded
+    userDBs = [];
 
     constructor(session, http, ea) {
         this.session = session;
@@ -57,11 +60,18 @@ export class DBService {
             }
 
         }).on('error', function (err) {
+            console.log(dbName);
             console.log(err);
             me.handleSyncError(db, err);
         });
 
         this.syncHandlers.set(dbName, handler);
+
+        this.userDBPrefixes.forEach( (prefix) => {
+            if (dbName.match(new RegExp("^" + prefix))) {
+                me.userDBs.push(dbName);
+            }
+        });
 
         return db;
 
@@ -70,10 +80,8 @@ export class DBService {
     getSyncOptions() {
         return {
             live: true,
-            retry: true,
-            
+            retry: true,            
             ajax: {
-                "withCredentials": false,
                 "headers": {
                     "Authorization": "Basic " + localStorage.getItem('aurelia_token')
                 }
@@ -99,26 +107,32 @@ export class DBService {
     //removes all databases that are specific to the current user
     removeUserDBs() {
         let me = this;
+        let promises = [];
         //stop replication on all databases
-        this.userDBs.forEach(function (dbPrefixes) {
-            let dbName = dbPrefixes + '-' + me.session.getUser().name;
+        this.userDBs.forEach(function (dbName) {
 
-            if (!me.dbs.has(dbName)) {
-                return;
+            log.debug("Try deleting " + dbName);
+
+            if (me.dbs.has(dbName)) {
+
+                me.syncHandlers.get(dbName).cancel();
+                me.syncHandlers.delete(dbName);
+                me.dbs.get(dbName).destroy();
+                promises.push(me.dbs.delete(dbName));
+
+                log.debug("Deleted " + dbName);
+
             }
-
-            me.syncHandlers.get(dbName).cancel();
-            me.syncHandlers.delete(dbName);
-            me.dbs.get(dbName).destroy();
-            me.dbs.delete(dbName);
             
         });
 
         //remove staff db
         if (this.dbs.has('staff')) {
             this.dbs.get('staff').destroy();
-            this.dbs.delete('staff');
+            promises.push(this.dbs.delete('staff'));
         }
+
+        return Promise.all(promises);
     }
 
     listUsers() {
@@ -177,7 +191,9 @@ export class DBService {
         })
         .catch( err => {
             //if we cannot connect to remote, retrieve local staff database
-            return db.allDocs({include_docs: true}).then( (result) => result.rows);
+            return db.allDocs({include_docs: true})
+            .then( (result) => result.rows)
+            .catch ( err => { log.debug(err); });
         })
 
     }
@@ -241,15 +257,22 @@ export class DBService {
         });
     }
 
-    view(dbName, viewName, startKey = '', endKey = '', group = false) {
+    view(dbName, viewName, startKey = '', endKey = '', group = false, descending = false, limit = 0) {
+
+        let options = {
+            start_key: startKey,
+            end_key: endKey,
+            group: group,
+            descending: descending
+        }
+
+        if (limit > 0) {
+            options.limit = limit;
+        }
 
         return this.getDB(dbName).query(
             viewName,
-            {
-                start_key: startKey,
-                end_key: endKey,
-                group: group
-            }
+            options
         )
         .then(function (response) {
             return response.rows;

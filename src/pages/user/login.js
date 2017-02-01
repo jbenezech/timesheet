@@ -5,6 +5,7 @@ import {Session} from '../../services/session';
 import settings from '../../config/app-settings';
 import PouchDB from 'pouchdb';
 import PouchDBAuthentication from 'pouchdb-authentication';
+import { log } from '../../services/log';
 
 @inject(AuthService, Router, Session)
 
@@ -29,6 +30,7 @@ export class Login {
             console.log("RESPONSE:");
             console.log(response);
             if (err) {
+                log.error(err);
                 login.loginError = err.name;
                 $('.ui.form .login.error.message').show();
                 return;
