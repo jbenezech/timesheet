@@ -80,7 +80,7 @@ export class AdminReports {
 
     retrieveUsers() {
         let me = this;
-
+log.error("ADMIN");
         return this.db.listUsers().then( response => {
             response.forEach( (user) => {
                 me.users.set(user.doc.name, user);

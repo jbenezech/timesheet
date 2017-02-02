@@ -122,6 +122,7 @@ export class Session {
             me.persistToStorage();
             return result;
         }).catch(function (err) {
+            //do nothing, session is returned from storage
             console.log(err);
         });
        

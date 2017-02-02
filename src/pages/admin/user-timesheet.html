@@ -15,11 +15,11 @@
             <div class="three fields">
                 <div class="salary inline four wide field">
                     <label>${ 'salary' | t}:</label>
-                    <input type="text" value.bind="timesheet.salary & validate" change.delegate="saveTimesheet(userName)"/>
+                    <input type="text" value.bind="timesheet.salary & validate"/>
                 </div>
                 <div class="precarite ui checkbox inline four wide field">
                     <label>${ 'precarite' | t}?</label>
-                    <input type="checkbox" value.bind="timesheet.precarite & validate" change.delegate="saveTimesheet(userName)"/>
+                    <input type="checkbox" value.bind="timesheet.precarite & validate"/>
                 </div>
                 <div class="inline middle aligned four wide field">
                     <button

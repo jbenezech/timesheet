@@ -137,7 +137,8 @@
         class="ui primary fluid button"
         tabindex="0"
         t="save"
-        click.trigger="doCreate($event)"
+        if.bind="isEditable"
+        click.trigger="doSave($event)"
     >
         Save
     </button>

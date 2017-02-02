@@ -55669,6 +55669,443 @@ if (typeof window !== 'undefined' && window.PouchDB) {
 },{"1":1}]},{},[17])(17)
 });;define('pouchdb-authentication', ['pouchdb-authentication/pouchdb.authentication'], function (main) { return main; });
 
+!function(e){"object"==typeof exports?module.exports=e():"function"==typeof define&&define.amd?define('pouchdb-upsert/pouchdb.upsert',e):"undefined"!=typeof window?window.PouchUpsert=e():"undefined"!=typeof global?global.PouchUpsert=e():"undefined"!=typeof self&&(self.PouchUpsert=e())}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+'use strict';
+
+var PouchPromise = require('pouchdb-promise');
+
+// this is essentially the "update sugar" function from daleharvey/pouchdb#1388
+// the diffFun tells us what delta to apply to the doc.  it either returns
+// the doc, or false if it doesn't need to do an update after all
+function upsertInner(db, docId, diffFun) {
+  if (typeof docId !== 'string') {
+    return PouchPromise.reject(new Error('doc id is required'));
+  }
+
+  return db.get(docId)["catch"](function (err) {
+    /* istanbul ignore next */
+    if (err.status !== 404) {
+      throw err;
+    }
+    return {};
+  }).then(function (doc) {
+    // the user might change the _rev, so save it for posterity
+    var docRev = doc._rev;
+    var newDoc = diffFun(doc);
+
+    if (!newDoc) {
+      // if the diffFun returns falsy, we short-circuit as
+      // an optimization
+      return { updated: false, rev: docRev };
+    }
+
+    // users aren't allowed to modify these values,
+    // so reset them here
+    newDoc._id = docId;
+    newDoc._rev = docRev;
+    return tryAndPut(db, newDoc, diffFun);
+  });
+}
+
+function tryAndPut(db, doc, diffFun) {
+  return db.put(doc).then(function (res) {
+    return {
+      updated: true,
+      rev: res.rev
+    };
+  }, function (err) {
+    /* istanbul ignore next */
+    if (err.status !== 409) {
+      throw err;
+    }
+    return upsertInner(db, doc._id, diffFun);
+  });
+}
+
+exports.upsert = function upsert(docId, diffFun, cb) {
+  var db = this;
+  var promise = upsertInner(db, docId, diffFun);
+  if (typeof cb !== 'function') {
+    return promise;
+  }
+  promise.then(function (resp) {
+    cb(null, resp);
+  }, cb);
+};
+
+exports.putIfNotExists = function putIfNotExists(docId, doc, cb) {
+  var db = this;
+
+  if (typeof docId !== 'string') {
+    cb = doc;
+    doc = docId;
+    docId = doc._id;
+  }
+
+  var diffFun = function (existingDoc) {
+    if (existingDoc._rev) {
+      return false; // do nothing
+    }
+    return doc;
+  };
+
+  var promise = upsertInner(db, docId, diffFun);
+  if (typeof cb !== 'function') {
+    return promise;
+  }
+  promise.then(function (resp) {
+    cb(null, resp);
+  }, cb);
+};
+
+
+/* istanbul ignore next */
+if (typeof window !== 'undefined' && window.PouchDB) {
+  window.PouchDB.plugin(exports);
+}
+
+},{"pouchdb-promise":4}],2:[function(require,module,exports){
+var global=typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {};'use strict';
+var Mutation = global.MutationObserver || global.WebKitMutationObserver;
+
+var scheduleDrain;
+
+{
+  if (Mutation) {
+    var called = 0;
+    var observer = new Mutation(nextTick);
+    var element = global.document.createTextNode('');
+    observer.observe(element, {
+      characterData: true
+    });
+    scheduleDrain = function () {
+      element.data = (called = ++called % 2);
+    };
+  } else if (!global.setImmediate && typeof global.MessageChannel !== 'undefined') {
+    var channel = new global.MessageChannel();
+    channel.port1.onmessage = nextTick;
+    scheduleDrain = function () {
+      channel.port2.postMessage(0);
+    };
+  } else if ('document' in global && 'onreadystatechange' in global.document.createElement('script')) {
+    scheduleDrain = function () {
+
+      // Create a <script> element; its readystatechange event will be fired asynchronously once it is inserted
+      // into the document. Do so, thus queuing up the task. Remember to clean up once it's been called.
+      var scriptEl = global.document.createElement('script');
+      scriptEl.onreadystatechange = function () {
+        nextTick();
+
+        scriptEl.onreadystatechange = null;
+        scriptEl.parentNode.removeChild(scriptEl);
+        scriptEl = null;
+      };
+      global.document.documentElement.appendChild(scriptEl);
+    };
+  } else {
+    scheduleDrain = function () {
+      setTimeout(nextTick, 0);
+    };
+  }
+}
+
+var draining;
+var queue = [];
+//named nextTick for less confusing stack traces
+function nextTick() {
+  draining = true;
+  var i, oldQueue;
+  var len = queue.length;
+  while (len) {
+    oldQueue = queue;
+    queue = [];
+    i = -1;
+    while (++i < len) {
+      oldQueue[i]();
+    }
+    len = queue.length;
+  }
+  draining = false;
+}
+
+module.exports = immediate;
+function immediate(task) {
+  if (queue.push(task) === 1 && !draining) {
+    scheduleDrain();
+  }
+}
+
+},{}],3:[function(require,module,exports){
+'use strict';
+var immediate = require('immediate');
+
+/* istanbul ignore next */
+function INTERNAL() {}
+
+var handlers = {};
+
+var REJECTED = ['REJECTED'];
+var FULFILLED = ['FULFILLED'];
+var PENDING = ['PENDING'];
+
+module.exports = Promise;
+
+function Promise(resolver) {
+  if (typeof resolver !== 'function') {
+    throw new TypeError('resolver must be a function');
+  }
+  this.state = PENDING;
+  this.queue = [];
+  this.outcome = void 0;
+  if (resolver !== INTERNAL) {
+    safelyResolveThenable(this, resolver);
+  }
+}
+
+Promise.prototype["catch"] = function (onRejected) {
+  return this.then(null, onRejected);
+};
+Promise.prototype.then = function (onFulfilled, onRejected) {
+  if (typeof onFulfilled !== 'function' && this.state === FULFILLED ||
+    typeof onRejected !== 'function' && this.state === REJECTED) {
+    return this;
+  }
+  var promise = new this.constructor(INTERNAL);
+  if (this.state !== PENDING) {
+    var resolver = this.state === FULFILLED ? onFulfilled : onRejected;
+    unwrap(promise, resolver, this.outcome);
+  } else {
+    this.queue.push(new QueueItem(promise, onFulfilled, onRejected));
+  }
+
+  return promise;
+};
+function QueueItem(promise, onFulfilled, onRejected) {
+  this.promise = promise;
+  if (typeof onFulfilled === 'function') {
+    this.onFulfilled = onFulfilled;
+    this.callFulfilled = this.otherCallFulfilled;
+  }
+  if (typeof onRejected === 'function') {
+    this.onRejected = onRejected;
+    this.callRejected = this.otherCallRejected;
+  }
+}
+QueueItem.prototype.callFulfilled = function (value) {
+  handlers.resolve(this.promise, value);
+};
+QueueItem.prototype.otherCallFulfilled = function (value) {
+  unwrap(this.promise, this.onFulfilled, value);
+};
+QueueItem.prototype.callRejected = function (value) {
+  handlers.reject(this.promise, value);
+};
+QueueItem.prototype.otherCallRejected = function (value) {
+  unwrap(this.promise, this.onRejected, value);
+};
+
+function unwrap(promise, func, value) {
+  immediate(function () {
+    var returnValue;
+    try {
+      returnValue = func(value);
+    } catch (e) {
+      return handlers.reject(promise, e);
+    }
+    if (returnValue === promise) {
+      handlers.reject(promise, new TypeError('Cannot resolve promise with itself'));
+    } else {
+      handlers.resolve(promise, returnValue);
+    }
+  });
+}
+
+handlers.resolve = function (self, value) {
+  var result = tryCatch(getThen, value);
+  if (result.status === 'error') {
+    return handlers.reject(self, result.value);
+  }
+  var thenable = result.value;
+
+  if (thenable) {
+    safelyResolveThenable(self, thenable);
+  } else {
+    self.state = FULFILLED;
+    self.outcome = value;
+    var i = -1;
+    var len = self.queue.length;
+    while (++i < len) {
+      self.queue[i].callFulfilled(value);
+    }
+  }
+  return self;
+};
+handlers.reject = function (self, error) {
+  self.state = REJECTED;
+  self.outcome = error;
+  var i = -1;
+  var len = self.queue.length;
+  while (++i < len) {
+    self.queue[i].callRejected(error);
+  }
+  return self;
+};
+
+function getThen(obj) {
+  // Make sure we only access the accessor once as required by the spec
+  var then = obj && obj.then;
+  if (obj && typeof obj === 'object' && typeof then === 'function') {
+    return function appyThen() {
+      then.apply(obj, arguments);
+    };
+  }
+}
+
+function safelyResolveThenable(self, thenable) {
+  // Either fulfill, reject or reject with error
+  var called = false;
+  function onError(value) {
+    if (called) {
+      return;
+    }
+    called = true;
+    handlers.reject(self, value);
+  }
+
+  function onSuccess(value) {
+    if (called) {
+      return;
+    }
+    called = true;
+    handlers.resolve(self, value);
+  }
+
+  function tryToUnwrap() {
+    thenable(onSuccess, onError);
+  }
+
+  var result = tryCatch(tryToUnwrap);
+  if (result.status === 'error') {
+    onError(result.value);
+  }
+}
+
+function tryCatch(func, value) {
+  var out = {};
+  try {
+    out.value = func(value);
+    out.status = 'success';
+  } catch (e) {
+    out.status = 'error';
+    out.value = e;
+  }
+  return out;
+}
+
+Promise.resolve = resolve;
+function resolve(value) {
+  if (value instanceof this) {
+    return value;
+  }
+  return handlers.resolve(new this(INTERNAL), value);
+}
+
+Promise.reject = reject;
+function reject(reason) {
+  var promise = new this(INTERNAL);
+  return handlers.reject(promise, reason);
+}
+
+Promise.all = all;
+function all(iterable) {
+  var self = this;
+  if (Object.prototype.toString.call(iterable) !== '[object Array]') {
+    return this.reject(new TypeError('must be an array'));
+  }
+
+  var len = iterable.length;
+  var called = false;
+  if (!len) {
+    return this.resolve([]);
+  }
+
+  var values = new Array(len);
+  var resolved = 0;
+  var i = -1;
+  var promise = new this(INTERNAL);
+
+  while (++i < len) {
+    allResolver(iterable[i], i);
+  }
+  return promise;
+  function allResolver(value, i) {
+    self.resolve(value).then(resolveFromAll, function (error) {
+      if (!called) {
+        called = true;
+        handlers.reject(promise, error);
+      }
+    });
+    function resolveFromAll(outValue) {
+      values[i] = outValue;
+      if (++resolved === len && !called) {
+        called = true;
+        handlers.resolve(promise, values);
+      }
+    }
+  }
+}
+
+Promise.race = race;
+function race(iterable) {
+  var self = this;
+  if (Object.prototype.toString.call(iterable) !== '[object Array]') {
+    return this.reject(new TypeError('must be an array'));
+  }
+
+  var len = iterable.length;
+  var called = false;
+  if (!len) {
+    return this.resolve([]);
+  }
+
+  var i = -1;
+  var promise = new this(INTERNAL);
+
+  while (++i < len) {
+    resolver(iterable[i]);
+  }
+  return promise;
+  function resolver(value) {
+    self.resolve(value).then(function (response) {
+      if (!called) {
+        called = true;
+        handlers.resolve(promise, response);
+      }
+    }, function (error) {
+      if (!called) {
+        called = true;
+        handlers.reject(promise, error);
+      }
+    });
+  }
+}
+
+},{"immediate":2}],4:[function(require,module,exports){
+'use strict';
+
+function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+
+var lie = _interopDefault(require('lie'));
+
+/* istanbul ignore next */
+var PouchPromise = typeof Promise === 'function' ? Promise : lie;
+
+module.exports = PouchPromise;
+},{"lie":3}]},{},[1])
+(1)
+});
+;;define('pouchdb-upsert', ['pouchdb-upsert/pouchdb.upsert'], function (main) { return main; });
+
  /*
  * # Semantic UI - 2.2.7
  * https://github.com/Semantic-Org/Semantic-UI
@@ -80743,4 +81180,4 @@ define('aurelia-animator-css/aurelia-animator-css',['exports', 'aurelia-templati
   }
 });;define('aurelia-animator-css', ['aurelia-animator-css/aurelia-animator-css'], function (main) { return main; });
 
-function _aureliaConfigureModuleLoader(){requirejs.config({"baseUrl":"src/","paths":{"aurelia-binding":"../node_modules/aurelia-binding/dist/amd/aurelia-binding","aurelia-bootstrapper":"../node_modules/aurelia-bootstrapper/dist/amd/aurelia-bootstrapper","aurelia-dependency-injection":"../node_modules/aurelia-dependency-injection/dist/amd/aurelia-dependency-injection","aurelia-history-browser":"../node_modules/aurelia-history-browser/dist/amd/aurelia-history-browser","aurelia-event-aggregator":"../node_modules/aurelia-event-aggregator/dist/amd/aurelia-event-aggregator","aurelia-history":"../node_modules/aurelia-history/dist/amd/aurelia-history","aurelia-logging":"../node_modules/aurelia-logging/dist/amd/aurelia-logging","aurelia-loader-default":"../node_modules/aurelia-loader-default/dist/amd/aurelia-loader-default","aurelia-metadata":"../node_modules/aurelia-metadata/dist/amd/aurelia-metadata","aurelia-pal":"../node_modules/aurelia-pal/dist/amd/aurelia-pal","aurelia-framework":"../node_modules/aurelia-framework/dist/amd/aurelia-framework","aurelia-path":"../node_modules/aurelia-path/dist/amd/aurelia-path","aurelia-polyfills":"../node_modules/aurelia-polyfills/dist/amd/aurelia-polyfills","aurelia-route-recognizer":"../node_modules/aurelia-route-recognizer/dist/amd/aurelia-route-recognizer","aurelia-logging-console":"../node_modules/aurelia-logging-console/dist/amd/aurelia-logging-console","aurelia-router":"../node_modules/aurelia-router/dist/amd/aurelia-router","aurelia-templating":"../node_modules/aurelia-templating/dist/amd/aurelia-templating","aurelia-loader":"../node_modules/aurelia-loader/dist/amd/aurelia-loader","aurelia-templating-binding":"../node_modules/aurelia-templating-binding/dist/amd/aurelia-templating-binding","aurelia-pal-browser":"../node_modules/aurelia-pal-browser/dist/amd/aurelia-pal-browser","aurelia-task-queue":"../node_modules/aurelia-task-queue/dist/amd/aurelia-task-queue","aurelia-fetch-client":"../node_modules/aurelia-fetch-client/dist/amd/aurelia-fetch-client","text":"../node_modules/text/text","jquery":"../node_modules/jquery/dist/jquery","app-bundle":"../scripts/app-bundle"},"packages":[{"name":"semantic","location":"../semantic/dist","main":"semantic"},{"name":"aurelia-testing","location":"../node_modules/aurelia-testing/dist/amd","main":"aurelia-testing"},{"name":"aurelia-templating-router","location":"../node_modules/aurelia-templating-router/dist/amd","main":"aurelia-templating-router"},{"name":"aurelia-templating-resources","location":"../node_modules/aurelia-templating-resources/dist/amd","main":"aurelia-templating-resources"},{"name":"i18next","location":"../node_modules/i18next/dist/umd","main":"i18next"},{"name":"pouchdb","location":"../node_modules/pouchdb/dist","main":"pouchdb"},{"name":"semantic-calendar","location":"../node_modules/semantic-ui-calendar/dist","main":"calendar"},{"name":"pouchdb-authentication","location":"../node_modules/pouchdb-authentication/dist","main":"pouchdb.authentication"},{"name":"aurelia-validation","location":"../node_modules/aurelia-validation/dist/amd","main":"aurelia-validation"},{"name":"aurelia-auth","location":"../node_modules/aurelia-auth/dist/amd","main":"aurelia-auth"},{"name":"aurelia-i18n","location":"../node_modules/aurelia-i18n/dist/amd","main":"aurelia-i18n"},{"name":"aurelia-animator-css","location":"../node_modules/aurelia-animator-css/dist/amd","main":"aurelia-animator-css"},{"name":"moment","location":"../node_modules/moment/min","main":"moment.min"},{"name":"aurelia-dialog","location":"../node_modules/aurelia-dialog/dist/amd","main":"aurelia-dialog"},{"name":"decimal","location":"../node_modules/decimal.js","main":"decimal.min"}],"stubModules":["text"],"shim":{"semantic":{"deps":["jquery"],"exports":"$"}},"bundles":{"app-bundle":["app","blur-image","environment","main","components/top-bar","components/user-app-router","config/app-settings","config/auth-config","services/accounting-service","services/db-service","services/http-service","services/log","services/route-loader","services/session","lib/form/semantic-form-validation-renderer","pages/admin/admin-panel","pages/admin/admin-reports","pages/admin/admin-router","pages/admin/planning","pages/admin/user-timesheet","pages/admin/users-timesheets","pages/timesheets/monthly-timesheet","pages/timesheets/planning-router","pages/timesheets/planning","pages/timesheets/timesheet-entry","pages/timesheets/timesheets-router","pages/timesheets/timesheets","pages/user/logged-redirect","pages/user/login","pages/user/password","pages/user/user-router","resources/confirmation/confirmation","resources/confirmation/delete-button","resources/confirmation/ui-confirmation","resources/dropdown/dropdown","resources/flash/animateonchange","resources/flash/flash-error-message","resources/flash/flash-message","resources/flash/flash-success-message","resources/flash/flash","resources/formats/array-join","resources/formats/date-format","resources/formats/email","resources/formats/limit-to-value","resources/formats/month-format","resources/formats/remote-url","resources/formats/tel","resources/formats/truncate","resources/pagination/pagination","resources/pagination/paginator","aurelia-templating-resources/compose","aurelia-templating-resources/if","aurelia-templating-resources/with","aurelia-templating-resources/repeat","aurelia-templating-resources/repeat-strategy-locator","aurelia-templating-resources/null-repeat-strategy","aurelia-templating-resources/array-repeat-strategy","aurelia-templating-resources/repeat-utilities","aurelia-templating-resources/map-repeat-strategy","aurelia-templating-resources/set-repeat-strategy","aurelia-templating-resources/number-repeat-strategy","aurelia-templating-resources/analyze-view-factory","aurelia-templating-resources/abstract-repeater","aurelia-templating-resources/show","aurelia-templating-resources/aurelia-hide-style","aurelia-templating-resources/hide","aurelia-templating-resources/sanitize-html","aurelia-templating-resources/html-sanitizer","aurelia-templating-resources/replaceable","aurelia-templating-resources/focus","aurelia-templating-resources/css-resource","aurelia-templating-resources/attr-binding-behavior","aurelia-templating-resources/binding-mode-behaviors","aurelia-templating-resources/throttle-binding-behavior","aurelia-templating-resources/debounce-binding-behavior","aurelia-templating-resources/signal-binding-behavior","aurelia-templating-resources/binding-signaler","aurelia-templating-resources/update-trigger-binding-behavior","aurelia-templating-resources/html-resource-plugin","aurelia-templating-resources/dynamic-element","aurelia-i18n/i18n","aurelia-i18n/relativeTime","aurelia-i18n/defaultTranslations/relative.time","aurelia-i18n/df","aurelia-i18n/nf","aurelia-i18n/rt","aurelia-i18n/t","aurelia-i18n/utils","aurelia-i18n/base-i18n","aurelia-i18n/aurelia-i18n-loader","aurelia-auth/auth-service","aurelia-auth/authentication","aurelia-auth/base-config","aurelia-auth/auth-utilities","aurelia-auth/storage","aurelia-auth/oAuth1","aurelia-auth/popup","aurelia-auth/oAuth2","aurelia-auth/authorize-step","aurelia-auth/auth-fetch-config","aurelia-auth/auth-filter","aurelia-validation/property-info","aurelia-validation/validate-binding-behavior","aurelia-validation/validate-trigger","aurelia-validation/validate-binding-behavior-base","aurelia-validation/validation-controller","aurelia-validation/validator","aurelia-validation/validate-result","aurelia-validation/validation-controller-factory","aurelia-validation/validation-errors-custom-attribute","aurelia-validation/validation-renderer-custom-attribute","aurelia-validation/implementation/rules","aurelia-validation/implementation/standard-validator","aurelia-validation/implementation/validation-messages","aurelia-validation/implementation/validation-parser","aurelia-validation/implementation/util","aurelia-validation/implementation/validation-rules","aurelia-dialog/ai-dialog","aurelia-dialog/ai-dialog-header","aurelia-dialog/dialog-controller","aurelia-dialog/lifecycle","aurelia-dialog/dialog-result","aurelia-dialog/ai-dialog-body","aurelia-dialog/ai-dialog-footer","aurelia-dialog/attach-focus","aurelia-dialog/dialog-configuration","aurelia-dialog/renderer","aurelia-dialog/dialog-renderer","aurelia-dialog/dialog-options","aurelia-dialog/dialog-service","styles/styles"]}})}
+function _aureliaConfigureModuleLoader(){requirejs.config({"baseUrl":"src/","paths":{"aurelia-bootstrapper":"../node_modules/aurelia-bootstrapper/dist/amd/aurelia-bootstrapper","aurelia-event-aggregator":"../node_modules/aurelia-event-aggregator/dist/amd/aurelia-event-aggregator","aurelia-dependency-injection":"../node_modules/aurelia-dependency-injection/dist/amd/aurelia-dependency-injection","aurelia-binding":"../node_modules/aurelia-binding/dist/amd/aurelia-binding","aurelia-framework":"../node_modules/aurelia-framework/dist/amd/aurelia-framework","aurelia-history":"../node_modules/aurelia-history/dist/amd/aurelia-history","aurelia-history-browser":"../node_modules/aurelia-history-browser/dist/amd/aurelia-history-browser","aurelia-loader":"../node_modules/aurelia-loader/dist/amd/aurelia-loader","aurelia-loader-default":"../node_modules/aurelia-loader-default/dist/amd/aurelia-loader-default","aurelia-logging":"../node_modules/aurelia-logging/dist/amd/aurelia-logging","aurelia-logging-console":"../node_modules/aurelia-logging-console/dist/amd/aurelia-logging-console","aurelia-metadata":"../node_modules/aurelia-metadata/dist/amd/aurelia-metadata","aurelia-pal":"../node_modules/aurelia-pal/dist/amd/aurelia-pal","aurelia-pal-browser":"../node_modules/aurelia-pal-browser/dist/amd/aurelia-pal-browser","aurelia-path":"../node_modules/aurelia-path/dist/amd/aurelia-path","aurelia-polyfills":"../node_modules/aurelia-polyfills/dist/amd/aurelia-polyfills","aurelia-route-recognizer":"../node_modules/aurelia-route-recognizer/dist/amd/aurelia-route-recognizer","aurelia-router":"../node_modules/aurelia-router/dist/amd/aurelia-router","aurelia-task-queue":"../node_modules/aurelia-task-queue/dist/amd/aurelia-task-queue","aurelia-templating-binding":"../node_modules/aurelia-templating-binding/dist/amd/aurelia-templating-binding","aurelia-templating":"../node_modules/aurelia-templating/dist/amd/aurelia-templating","text":"../node_modules/text/text","aurelia-fetch-client":"../node_modules/aurelia-fetch-client/dist/amd/aurelia-fetch-client","jquery":"../node_modules/jquery/dist/jquery","app-bundle":"../scripts/app-bundle"},"packages":[{"name":"semantic","location":"../semantic/dist","main":"semantic"},{"name":"aurelia-templating-resources","location":"../node_modules/aurelia-templating-resources/dist/amd","main":"aurelia-templating-resources"},{"name":"aurelia-templating-router","location":"../node_modules/aurelia-templating-router/dist/amd","main":"aurelia-templating-router"},{"name":"aurelia-testing","location":"../node_modules/aurelia-testing/dist/amd","main":"aurelia-testing"},{"name":"i18next","location":"../node_modules/i18next/dist/umd","main":"i18next"},{"name":"aurelia-i18n","location":"../node_modules/aurelia-i18n/dist/amd","main":"aurelia-i18n"},{"name":"aurelia-auth","location":"../node_modules/aurelia-auth/dist/amd","main":"aurelia-auth"},{"name":"pouchdb","location":"../node_modules/pouchdb/dist","main":"pouchdb"},{"name":"pouchdb-authentication","location":"../node_modules/pouchdb-authentication/dist","main":"pouchdb.authentication"},{"name":"pouchdb-upsert","location":"../node_modules/pouchdb-upsert/dist","main":"pouchdb.upsert"},{"name":"semantic-calendar","location":"../node_modules/semantic-ui-calendar/dist","main":"calendar"},{"name":"aurelia-validation","location":"../node_modules/aurelia-validation/dist/amd","main":"aurelia-validation"},{"name":"moment","location":"../node_modules/moment/min","main":"moment.min"},{"name":"aurelia-dialog","location":"../node_modules/aurelia-dialog/dist/amd","main":"aurelia-dialog"},{"name":"decimal","location":"../node_modules/decimal.js","main":"decimal.min"},{"name":"aurelia-animator-css","location":"../node_modules/aurelia-animator-css/dist/amd","main":"aurelia-animator-css"}],"stubModules":["text"],"shim":{"semantic":{"deps":["jquery"],"exports":"$"}},"bundles":{"app-bundle":["app","blur-image","environment","main","components/top-bar","components/user-app-router","config/app-settings","config/auth-config","services/accounting-service","services/db-service","services/http-service","services/log","services/route-loader","services/session","lib/form/semantic-form-validation-renderer","pages/admin/admin-panel","pages/admin/admin-report","pages/admin/admin-reports","pages/admin/admin-router","pages/admin/planning","pages/admin/user-timesheet","pages/admin/users-timesheets","pages/timesheets/monthly-timesheet","pages/timesheets/planning-router","pages/timesheets/planning","pages/timesheets/timesheet-entry","pages/timesheets/timesheets-router","pages/timesheets/timesheets","pages/user/logged-redirect","pages/user/login","pages/user/password","pages/user/user-router","resources/confirmation/confirmation","resources/confirmation/delete-button","resources/confirmation/ui-confirmation","resources/dropdown/dropdown","resources/flash/animateonchange","resources/flash/flash-error-message","resources/flash/flash-message","resources/flash/flash-success-message","resources/flash/flash","resources/formats/array-join","resources/formats/date-format","resources/formats/email","resources/formats/limit-to-value","resources/formats/month-format","resources/formats/remote-url","resources/formats/tel","resources/formats/truncate","resources/pagination/pagination","resources/pagination/paginator","aurelia-templating-resources/compose","aurelia-templating-resources/if","aurelia-templating-resources/with","aurelia-templating-resources/repeat","aurelia-templating-resources/repeat-strategy-locator","aurelia-templating-resources/null-repeat-strategy","aurelia-templating-resources/array-repeat-strategy","aurelia-templating-resources/repeat-utilities","aurelia-templating-resources/map-repeat-strategy","aurelia-templating-resources/set-repeat-strategy","aurelia-templating-resources/number-repeat-strategy","aurelia-templating-resources/analyze-view-factory","aurelia-templating-resources/abstract-repeater","aurelia-templating-resources/show","aurelia-templating-resources/aurelia-hide-style","aurelia-templating-resources/hide","aurelia-templating-resources/sanitize-html","aurelia-templating-resources/html-sanitizer","aurelia-templating-resources/replaceable","aurelia-templating-resources/focus","aurelia-templating-resources/css-resource","aurelia-templating-resources/attr-binding-behavior","aurelia-templating-resources/binding-mode-behaviors","aurelia-templating-resources/throttle-binding-behavior","aurelia-templating-resources/debounce-binding-behavior","aurelia-templating-resources/signal-binding-behavior","aurelia-templating-resources/binding-signaler","aurelia-templating-resources/update-trigger-binding-behavior","aurelia-templating-resources/html-resource-plugin","aurelia-templating-resources/dynamic-element","aurelia-i18n/i18n","aurelia-i18n/relativeTime","aurelia-i18n/defaultTranslations/relative.time","aurelia-i18n/df","aurelia-i18n/nf","aurelia-i18n/rt","aurelia-i18n/t","aurelia-i18n/utils","aurelia-i18n/base-i18n","aurelia-i18n/aurelia-i18n-loader","aurelia-auth/auth-service","aurelia-auth/authentication","aurelia-auth/base-config","aurelia-auth/auth-utilities","aurelia-auth/storage","aurelia-auth/oAuth1","aurelia-auth/popup","aurelia-auth/oAuth2","aurelia-auth/authorize-step","aurelia-auth/auth-fetch-config","aurelia-auth/auth-filter","aurelia-validation/property-info","aurelia-validation/validate-binding-behavior","aurelia-validation/validate-trigger","aurelia-validation/validate-binding-behavior-base","aurelia-validation/validation-controller","aurelia-validation/validator","aurelia-validation/validate-result","aurelia-validation/validation-controller-factory","aurelia-validation/validation-errors-custom-attribute","aurelia-validation/validation-renderer-custom-attribute","aurelia-validation/implementation/rules","aurelia-validation/implementation/standard-validator","aurelia-validation/implementation/validation-messages","aurelia-validation/implementation/validation-parser","aurelia-validation/implementation/util","aurelia-validation/implementation/validation-rules","aurelia-dialog/ai-dialog","aurelia-dialog/ai-dialog-header","aurelia-dialog/dialog-controller","aurelia-dialog/lifecycle","aurelia-dialog/dialog-result","aurelia-dialog/ai-dialog-body","aurelia-dialog/ai-dialog-footer","aurelia-dialog/attach-focus","aurelia-dialog/dialog-configuration","aurelia-dialog/renderer","aurelia-dialog/dialog-renderer","aurelia-dialog/dialog-options","aurelia-dialog/dialog-service","styles/styles"]}})}

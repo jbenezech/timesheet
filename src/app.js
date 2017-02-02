@@ -47,7 +47,6 @@ export class App {
                 },
                 responseError(response) {
                     console.log(response);
-                    ea.publish(new FlashErrorMessage(i18n.tr(response.statusText)));
                     return new Error(response.statusText);
                 }
             })

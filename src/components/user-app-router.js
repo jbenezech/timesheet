@@ -65,11 +65,23 @@ export class UserAppRouter {
             auth: true
             };
 
+        let error =
+            { 
+            route: ['user'], 
+            name: 'user', 
+            moduleId: 'pages/user/user-router', 
+            nav: false, 
+            title: 'nav.user', 
+            settings: { 'icon': 'users' } ,
+            auth: true
+            };
+
         let routes = [
             timesheets,
             planning,
             adminPlanning,
-            user
+            user,
+            error
         ];
 
         config.map(routes);

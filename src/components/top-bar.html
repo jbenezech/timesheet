@@ -3,8 +3,19 @@
     <confirmation approve-callback></confirmation>
 
     <div class="top-bar ui menu navbar">
+        <div class="left menu">
+            <div class="item">
+                <i if.bind="isSynced" class="green feed icon"></i>
+                <i if.bind="!isSynced" class="red feed icon"></i>
+                <a 
+                    route-href="route: error-report"
+                    if.bind="error"
+                >
+                    <i class="red alarm icon"></i>
+                </a>
+            </div>
+        </div>
         <div class="right menu">
-
 
             <a 
                 route-href="route: admin-planning"

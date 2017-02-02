@@ -70,6 +70,13 @@ export class TimesheetEntry {
         });        
     }
 
+    get isEditable() {
+        return this.session.isGranted('admin') || 
+            this.entity.allocation === undefined ||
+            this.entity.allocation === null
+        ;
+    }
+
     setupValidation() {
 
         ValidationRules.customRule(
@@ -133,10 +140,15 @@ export class TimesheetEntry {
         }); 
     }
 
-    doCreate(event) {
+    doSave(event) {
 
         let errors = this.controller.validate().then( result => {
 
+            //no error message, save button should not be available 
+            if (!this.isEditable) {
+                return;
+            }
+            
             if (!result.valid) {
                 return;
             }
@@ -150,19 +162,12 @@ export class TimesheetEntry {
             this.entity.duration = parseInt(this.entity.hours) + parseFloat(parseInt(this.entity.minutes)/60);
             this.entity.interpret_duration = parseInt(this.entity.interpret_hours) + parseFloat(parseInt(this.entity.interpret_minutes)/60);
 
-            console.log("SAVING ENTRY");
-            console.log(this.entity);
-
             let timesheetId = moment(this.entity.date).format('YYYY-MM');
-            console.log(timesheetId);
             
             //get the timesheet document
             this.db.get('timesheet-' + this.session.getUser().name, timesheetId).then( timesheet => {
 
-                console.log(timesheet);
-
                 if (! timesheet ) {
-                    console.log("CREATENEWTIMESHEET");
                     timesheet = {
                         _id: timesheetId,
                         entries: []

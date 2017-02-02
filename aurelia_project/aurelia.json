@@ -157,6 +157,11 @@
             "main": "pouchdb.authentication"
           },
           {
+            "name": "pouchdb-upsert",
+            "path": "../node_modules/pouchdb-upsert/dist",
+            "main": "pouchdb.upsert"
+          },
+          {
             "name": "semantic",
             "path": "../semantic/dist",
             "main": "semantic",

@@ -1,6 +1,7 @@
 import { inject, singleton } from 'aurelia-framework';
 import { Session} from './session';
 import PouchDB from 'pouchdb';
+import PouchdbUpsert from 'pouchdb-upsert';
 import moment from 'moment';
 import { EventAggregator } from 'aurelia-event-aggregator';
 import { HttpClient } from 'aurelia-fetch-client';
@@ -30,6 +31,10 @@ export class DBService {
         this.session = session;
         this.http = http;
         this.ea = ea;
+
+        this.restoreCheckpoints();
+
+        PouchDB.plugin(PouchdbUpsert);
     }
 
     getDB(dbName) {
@@ -52,7 +57,7 @@ export class DBService {
             'https://proacti.cloudant.com/' + dbName, 
             me.getSyncOptions()
         ).on('change', function (change) {
-            me.lastSyncs.set(dbName, Date.now());
+            me.addSyncCheckpoint(dbName);
 
             //notify the application that data may have changed
             if (change.direction === 'pull') {
@@ -60,8 +65,6 @@ export class DBService {
             }
 
         }).on('error', function (err) {
-            console.log(dbName);
-            console.log(err);
             me.handleSyncError(db, err);
         });
 
@@ -101,6 +104,24 @@ export class DBService {
         } else if (err.status === 401) {
             //unauthorized, user has been revoked or password changed. Remove local storage
             this.session.invalidate();
+        } else {
+            //Not sure what error this is but we need to report it
+            this.ea.publish('dberr', {dbName: db.name, err: err});
+        }
+    }
+
+    handleUpdateError(db, doc, err) {
+
+        //only handling immediate conflicts by retrying
+        //let pouchdb handle evantual conflicts
+        if (err.status === 409 && err.name === 'conflict') {
+            //immediate conflict
+            db.upsert(doc._id, () => {                
+                return doc; 
+            }).catch( err => {
+                log.error(err);
+                this.ea.publish('dberr', {dbName: db.name, doc: doc, err: err});
+            });
         }
     }
 
@@ -147,54 +168,76 @@ export class DBService {
 
         let db = this.dbs.get('staff');
 
+        let me = this;
         let promises = [];
 
         //we can't access design documents on _users database so we retrieve all docs        
         return this.http.fetch('https://proacti.cloudant.com/_users/_all_docs?include_docs=true')
         .then(response => response.json())
         .then(users => {
-            let filteredUsers = [];
-            users.rows.forEach( (user) => {
 
-                //all_docs returns everything including design documents.
-                //filter for users only
-                if (user.id.match(/^org\.couchdb\.user/)) {
+            return Promise.all(
+                users.rows.filter( (user) => {
+                    return user.id.match(/^org\.couchdb\.user/);
+                }).map( (user) => {
 
                     let localUser = {
                         id: user.doc._id,
                         doc: {
                             _id: user.doc._id,
                             name: user.doc.name,
+                            originRev: user.doc._rev,
                             roles: user.doc.roles
                         }
                     }
-                    filteredUsers.push(localUser);
 
-                    promises.push(
-                        db.get(localUser.id).then( (doc) => {
-                            //replace existing doc if it exists or create it if not
-                            if (doc) {
-                                localUser.doc._rev = doc._rev;
-                            }
-                            db.put(localUser.doc);
-                        }).catch( (err) => {
-                            if (err.status === 404) {
-                                db.put(localUser.doc);
-                            }
-                        })
-                    );
-                }
-            });
+                    return this.createOrReplaceLocalUser(localUser);
 
-            //return the filtered users array only when all promises are resolved
-            return Promise.all(promises).then( () => filteredeUsers );
-        })
-        .catch( err => {
+                })
+            );
+
+        }).then( (filteredUsers) => {
+            return filteredUsers;
+        }).catch( err => {
             //if we cannot connect to remote, retrieve local staff database
             return db.allDocs({include_docs: true})
             .then( (result) => result.rows)
             .catch ( err => { log.debug(err); });
         })
+
+    }
+
+    createOrReplaceLocalUser(user) {
+
+        let db = this.dbs.get('staff');
+
+        let me = this;
+        //replace existing doc if it exists or create it if not
+        return db.get(user.id)
+        .then( (doc) => {
+            
+            if (doc.originRev === user.doc.originRev) {
+                return new Promise( (resolve) => resolve(user) );
+            }
+
+            user.doc._rev = doc._rev;
+            return db.put(user.doc)
+            .then ( () => user )
+            .catch(err => {
+                return me.handleUpdateError(db, user.doc, err);
+            });
+        }).then( (r) => {
+            return user;                    
+        }).catch( (err) => {
+            if (err.status === 404) {
+                return db.put(user.doc)
+                .then( () => {
+                    return user;
+                }).catch(err => {
+                    return me.handleUpdateError(db, user.doc, err);
+                });
+            }
+        });
 
     }
 
@@ -285,30 +328,64 @@ export class DBService {
 
     save(dbName, doc) {
 
-        this.lastUpdates.set(dbName, Date.now());
+        this.addUpdateCheckpoint(dbName);
+        
+        let db = this.getDB(dbName);
+        let me = this;
 
-        return this.getDB(dbName).put(doc)
+        return db.put(doc)
         .then(function (response) {
             return response;
         })
         .catch(function (err) {
-            log.error(err);
+            me.handleUpdateError(db, doc, err);
         });
 
     }
 
     create(dbName, doc) {
 
-        this.lastUpdates.set(dbName, Date.now());
+        this.addUpdateCheckpoint(dbName);
 
-        return this.getDB(dbName).post(doc)
+        let db = this.getDB(dbName);
+        let me = this;
+
+        return db.post(doc)
         .then(function (response) {
             return response;
         })
         .catch(function (err) {
-            log.error(err);
+            me.handleUpdateError(db, doc, err);
         });
 
+    }
+
+    addUpdateCheckpoint(dbName) {
+
+        this.lastUpdates.set(dbName, Date.now());
+
+        //persist to storage in case user closes browser
+        let storage = [];
+        this.lastUpdates.forEach( (value, key) => storage = [...storage, [key, value]] );
+        localStorage.setItem('last-updates', JSON.stringify(storage));
+    }
+
+    addSyncCheckpoint(dbName) {
+        this.lastSyncs.set(dbName, Date.now());
+
+        //persist to storage in case user closes browser
+        let storage = [];
+        this.lastSyncs.forEach( (value, key) => storage = [...storage, [key, value]] );
+        localStorage.setItem('last-syncs', JSON.stringify(storage));
+    }
+
+    restoreCheckpoints() {
+        if (localStorage.getItem('last-updates') !== null) {
+            this.lastUpdates = new Map(JSON.parse(localStorage.getItem('last-updates')));
+        }
+        if (localStorage.getItem('last-syncs') !== null) {
+            this.lastSyncs = new Map(JSON.parse(localStorage.getItem('last-syncs')));
+        }
     }
 
     hasUnsyncedUpdate() {
