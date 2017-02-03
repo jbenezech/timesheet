@@ -6,8 +6,10 @@ import moment from 'moment';
 import { EventAggregator } from 'aurelia-event-aggregator';
 import { HttpClient } from 'aurelia-fetch-client';
 import { log } from './log';
+import settings from '../config/app-settings';
+import { ShardingService } from './sharding-service';
 
-@inject(Session, HttpClient, EventAggregator)
+@inject(Session, ShardingService, HttpClient, EventAggregator)
 @singleton()
 export class DBService {
 
@@ -19,16 +21,9 @@ export class DBService {
     lastUpdates = new Map();
     lastSyncs = new Map();
 
-    //db prefixes for user-specific databases
-    userDBPrefixes = [
-        'timesheet'
-    ];
-
-    //list of user db names that have been loaded
-    userDBs = [];
-
-    constructor(session, http, ea) {
+    constructor(session, sharding, http, ea) {
         this.session = session;
+        this.sharding = sharding;
         this.http = http;
         this.ea = ea;
 
@@ -53,10 +48,13 @@ export class DBService {
 
         let db = new PouchDB(dbName,{skip_setup: true});
         
+        this.addUpdateCheckpoint(dbName);
+
         let handler = db.sync(
-            'https://proacti.cloudant.com/' + dbName, 
+            this.sharding.getRemoteUrl() + dbName, 
             me.getSyncOptions()
         ).on('change', function (change) {
+
             me.addSyncCheckpoint(dbName);
 
             //notify the application that data may have changed
@@ -64,17 +62,21 @@ export class DBService {
                 me.ea.publish('dbsync', {dbName: dbName});
             }
 
+        }).on('paused', function (err) {
+            //paused if no more data to sync or disconnected
+            //add sync marker although it's possible some new local data was not 
+            //yet synced with remote if disconnected.
+            //Need to find a better way to handle this
+            // 1. User enters new data
+            // 2. User disconnects before new data is synced
+            // -> marker set as synced
+            //probably need different marker for incoming and outgoing syncs
+            me.addSyncCheckpoint(dbName);
         }).on('error', function (err) {
             me.handleSyncError(db, err);
         });
 
         this.syncHandlers.set(dbName, handler);
-
-        this.userDBPrefixes.forEach( (prefix) => {
-            if (dbName.match(new RegExp("^" + prefix))) {
-                me.userDBs.push(dbName);
-            }
-        });
 
         return db;
 
@@ -125,33 +127,32 @@ export class DBService {
         }
     }
 
-    //removes all databases that are specific to the current user
-    removeUserDBs() {
+    //removes all databases
+    removeDBs() {
         let me = this;
         let promises = [];
         //stop replication on all databases
-        this.userDBs.forEach(function (dbName) {
-
-            log.debug("Try deleting " + dbName);
-
-            if (me.dbs.has(dbName)) {
-
+        this.dbs.forEach(function (db, dbName) {
+            if (me.syncHandlers.has(dbName)) {
                 me.syncHandlers.get(dbName).cancel();
                 me.syncHandlers.delete(dbName);
-                me.dbs.get(dbName).destroy();
-                promises.push(me.dbs.delete(dbName));
-
-                log.debug("Deleted " + dbName);
-
             }
-            
+            me.dbs.delete(dbName);
+            promises.push(db.destroy());
+
         });
 
-        //remove staff db
-        if (this.dbs.has('staff')) {
-            this.dbs.get('staff').destroy();
-            promises.push(this.dbs.delete('staff'));
+        //remove all indexdb databases (some might be there but no mounted in memory)
+        //https://gist.github.com/rmehner/b9a41d9f659c9b1c3340
+        window.indexedDB.webkitGetDatabaseNames().onsuccess = function(event) {
+            Array.prototype.forEach.call(event.target.result, indexedDB.deleteDatabase.bind(indexedDB));
         }
+
+        //also remove sync markers
+        localStorage.removeItem('last-updates');
+        localStorage.removeItem('last-syncs');
+        this.lastUpdates.clear();
+        this.lastSyncs.clear();
 
         return Promise.all(promises);
     }
@@ -160,7 +161,6 @@ export class DBService {
 
         //we cannot replicate the _users database even with admin access to it
         //so we copy it partially if we can retrieve it
-
         if (!this.dbs.has('staff')) {
             let db = new PouchDB('staff', {skip_setup: true});
             this.dbs.set('staff', db);
@@ -172,7 +172,7 @@ export class DBService {
         let promises = [];
 
         //we can't access design documents on _users database so we retrieve all docs        
-        return this.http.fetch('https://proacti.cloudant.com/_users/_all_docs?include_docs=true')
+        return this.http.fetch(this.sharding.getRemoteUrl() + '_users/_all_docs?include_docs=true')
         .then(response => response.json())
         .then(users => {
 
@@ -202,7 +202,7 @@ export class DBService {
             //if we cannot connect to remote, retrieve local staff database
             return db.allDocs({include_docs: true})
             .then( (result) => result.rows)
-            .catch ( err => { log.debug(err); });
+            .catch ( err => { log.error(err); });
         })
 
     }

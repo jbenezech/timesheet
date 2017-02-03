@@ -5,7 +5,6 @@ import semanticui from 'semantic';
 import semanticuicalendar from 'semantic-calendar/calendar';
 import { FlashErrorMessage } from 'resources/flash/flash-error-message';
 import { SemanticFormValidationRenderer } from 'lib/form/semantic-form-validation-renderer';
-import config from './config/auth-config';
 import settings from './config/app-settings';
 import PouchDB from 'pouchdb';
 
@@ -51,10 +50,6 @@ export function configure(aurelia) {
     })
     //.plugin('aurelia-validatejs')
     .plugin('aurelia-validation')
-    .plugin('aurelia-auth', (baseConfig) => {
-        baseConfig.baseUrl = settings.baseUrl;
-        baseConfig.configure(config);
-    });
     ;
 
     configureContainer(aurelia.container);

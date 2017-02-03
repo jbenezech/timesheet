@@ -80,7 +80,7 @@ export class AdminReports {
 
     retrieveUsers() {
         let me = this;
-log.error("ADMIN");
+
         return this.db.listUsers().then( response => {
             response.forEach( (user) => {
                 me.users.set(user.doc.name, user);
@@ -121,6 +121,10 @@ log.error("ADMIN");
                     me.getNextMonth(),
                     false
                 ).then( entries => {
+
+                    if (entries === undefined) {
+                        return new Promise( (resolve) => resolve([]) );
+                    }
 
                     let allocationUserReports = [];
                     let reportsPromises = [];
@@ -240,8 +244,9 @@ log.error("ADMIN");
         for (let entry of this.allocationReports.entries) {            
             entry.ratio = entry.ratio.div(nbrReports);
         }
-        this.allocationReports.totals.ratio = this.allocationReports.totals.ratio.div(nbrReports);
-
+        if (this.allocationReports.totals.ratio !== undefined) {
+            this.allocationReports.totals.ratio = this.allocationReports.totals.ratio.div(nbrReports);
+        }
         
         this.generateExportLink();
 
@@ -282,7 +287,7 @@ log.error("ADMIN");
             lnk = document.getElementById(user + '-csv-export-link');
         }
 
-        if (lnk === null) {
+        if (lnk === null || reports.entries.length === 0) {
             return;
         }
 

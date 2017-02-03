@@ -32,7 +32,6 @@ export class MonthlyTimesheet {
         this.retrieveData();
 
         this.ea.subscribe('dbsync', response => {
-            console.log("DBSYNC");
             me.retrieveData();
         });
     }
@@ -80,10 +79,8 @@ export class MonthlyTimesheet {
     
     getTimesheet() {
         let me = this;
-        console.log("LISTTIMESHEET");
+
         return this.db.get('timesheet-' + this.session.getUser().name,  this.timesheetId).then( response => {
-            console.log("RESPONSE");
-            console.log(response);
             me.entity = response;
             return new Promise((resolve) => { resolve(); });
         }); 

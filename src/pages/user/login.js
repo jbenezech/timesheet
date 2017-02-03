@@ -6,13 +6,15 @@ import settings from '../../config/app-settings';
 import PouchDB from 'pouchdb';
 import PouchDBAuthentication from 'pouchdb-authentication';
 import { log } from '../../services/log';
+import { ShardingService } from '../../services/sharding-service';
 
-@inject(AuthService, Router, Session)
+@inject(AuthService, ShardingService, Router, Session)
 
 export class Login {
 
-    constructor(auth, router, session){
+    constructor(auth, sharding, router, session){
         this.auth = auth;
+        this.sharding = sharding;
         this.router = router;
         this.session = session;
         this.settings = settings;
@@ -24,11 +26,9 @@ export class Login {
         
         PouchDB.plugin(PouchDBAuthentication);
 
-        let db = new PouchDB('https://proacti.cloudant.com/timesheet-jerome', { skipSetup: true });
+        let db = new PouchDB(this.sharding.getRemoteUrl() + '_users', { skipSetup: true });
         db.login( this.username, this.password, function (err, response)  {
 
-            console.log("RESPONSE:");
-            console.log(response);
             if (err) {
                 log.error(err);
                 login.loginError = err.name;

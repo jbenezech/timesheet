@@ -58,7 +58,7 @@ export class UsersTimesheets {
 
     retrieveUsers() {
         let me = this;
-        log.error("USERS");
+
         return this.db.listUsers().then( response => {
             response.forEach( (user) => {
                 me.users.set(user.doc.name, user);

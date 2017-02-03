@@ -1,11 +1,10 @@
 var settings = {
-    rootUrl: '',
-    envUrlPrefix: '',
-    baseUrl: '',
-    default_locale: 'km-KH',
+    remoteUrls: [
+        'http://ruelle1.mykampot.com/',
+        'http://ruelle2.mykampot.com/'
+    ],
+    default_locale: 'fr-FR',
     debug: false,
-    country: 1,
-    view_notifications_timeout: 5000,
 
     calendar_text: {
         days: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
@@ -18,9 +17,6 @@ var settings = {
     }
 }
 
-settings.rootUrl = 'http://timesheet.local';
-settings.envUrlPrefix = '/app_dev.php';
-settings.baseUrl = settings.rootUrl + settings.envUrlPrefix;
 settings.debug = true;
 
 export default settings;

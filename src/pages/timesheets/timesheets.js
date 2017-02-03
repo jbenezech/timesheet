@@ -29,13 +29,11 @@ export class Timesheets {
     }
 
     activate(params) {
-        console.log("ACTIVATE");
         let me = this;        
 
         this.retrieveData();
 
         this.ea.subscribe('dbsync', response => {
-            console.log("DBSYNC");
             me.retrieveData();
         });
     }
@@ -65,10 +63,8 @@ export class Timesheets {
 
     getLastTimesheet() {
         let me = this;
-        console.log("LISTTIMESHEET");
+
         return this.db.list('timesheet-' + this.session.getUser().name, 1, true).then( response => {
-            log.debug("RESPONSE");
-            log.debug(response);
 
             me.lastTimesheet = {
                 doc: {
@@ -79,7 +75,7 @@ export class Timesheets {
             if (response.length > 0) {
                 me.lastTimesheet = response[0];
             }
-            log.debug(me.lastTimesheet);
+
             return new Promise((resolve) => { resolve(); });
         }); 
     }
@@ -93,9 +89,6 @@ export class Timesheets {
     }
 
     saveEntry(entry) {
-        console.log("SAVVVVVVVVVV");
-        console.log(entry);
-        
         this.getLastTimesheet();
     }
 

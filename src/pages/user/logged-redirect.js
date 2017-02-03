@@ -12,10 +12,8 @@ export class LoggedRedirect
 
     activate() {
         let router = this.router;
-        console.log("activate");
         this.session.start()
         .then(() => {
-            console.log("NAV");
             router.navigate('app/timesheets');
         })
         .catch (function (err) {

@@ -6,15 +6,18 @@ import {I18N} from 'aurelia-i18n';
 import settings from '../config/app-settings';
 import {HttpClient} from 'aurelia-fetch-client';
 import PouchDB from 'pouchdb';
+import { log } from './log';
+import { ShardingService } from './sharding-service';
 
 @singleton()
-@inject(RouteLoader, Router, AuthService, I18N, HttpClient)
+@inject(RouteLoader, Router, AuthService, ShardingService, I18N, HttpClient)
 export class Session {
 
-    constructor(loader, router, auth, i18n, http) {
+    constructor(loader, router, auth, sharding, i18n, http) {
         this.loader = loader;
         this.router = router;
         this.auth = auth;
+        this.sharding = sharding;
         this.i18n = i18n;
         this.http = http;
 
@@ -97,7 +100,7 @@ export class Session {
        let password = userInfo[1];
 
         let db = new PouchDB(
-            'https://proacti.cloudant.com/_users',
+            this.sharding.getRemoteUrl() + '_users',
             { 
                 skipSetup: true,
                 auth: {
@@ -123,7 +126,7 @@ export class Session {
             return result;
         }).catch(function (err) {
             //do nothing, session is returned from storage
-            console.log(err);
+            log.error(err);
         });
        
     }
@@ -167,7 +170,7 @@ export class Session {
     }
 
     isGranted(role) {
-        if (this.user === undefined) {
+        if (this.user === undefined || this.user === null) {
             return false;
         }
         return this.user.roles.includes(role);

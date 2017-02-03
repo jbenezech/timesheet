@@ -48,7 +48,7 @@ export class TopBar {
     }
 
     clearData() {
-        this.db.removeUserDBs().then( () => this.session.invalidate() );
+        this.db.removeDBs().then( () => this.session.invalidate() );
     }
 
     attached() {

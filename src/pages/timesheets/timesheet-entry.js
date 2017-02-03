@@ -30,8 +30,6 @@ export class TimesheetEntry {
     }
 
     activate(params, routeConfig, navigationInstruction) {
-        console.log(params);
-        console.log(navigationInstruction);
         if (params.timesheetId && params.entryId) {
             this.getTimesheetEntry(params.timesheetId, params.entryId)
         }
@@ -187,8 +185,6 @@ export class TimesheetEntry {
                     ...timesheet.entries
                 ];
 
-                console.log(timesheet);
-
                 this.db.save('timesheet-' + this.session.getUser().name, timesheet).then( () =>
                     this.ea.publish(new FlashSuccessMessage(this.i18n.tr('success')))
                 );
@@ -213,7 +209,6 @@ export class TimesheetEntry {
             });
             
         });
-        console.log(errors);
         
     }
 }

@@ -26,7 +26,8 @@
     "semantic-ui": "^2.2.7",
     "semantic-ui-calendar": "0.0.6",
     "text": "github:requirejs/text#latest",
-    "whatwg-fetch": "^2.0.2"
+    "whatwg-fetch": "^2.0.2",
+    "worker-pouch": "^2.0.0"
   },
   "peerDependencies": {},
   "devDependencies": {

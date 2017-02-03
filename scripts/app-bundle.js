@@ -398,7 +398,7 @@ define('environment',["exports"], function (exports) {
     testing: true
   };
 });
-define('main',['exports', 'aurelia-fetch-client', 'aurelia-event-aggregator', 'aurelia-i18n', 'semantic', 'semantic-calendar/calendar', 'resources/flash/flash-error-message', 'lib/form/semantic-form-validation-renderer', './config/auth-config', './config/app-settings', 'pouchdb', 'aurelia-framework', 'aurelia-logging-console'], function (exports, _aureliaFetchClient, _aureliaEventAggregator, _aureliaI18n, _semantic, _calendar, _flashErrorMessage, _semanticFormValidationRenderer, _authConfig, _appSettings, _pouchdb, _aureliaFramework, _aureliaLoggingConsole) {
+define('main',['exports', 'aurelia-fetch-client', 'aurelia-event-aggregator', 'aurelia-i18n', 'semantic', 'semantic-calendar/calendar', 'resources/flash/flash-error-message', 'lib/form/semantic-form-validation-renderer', './config/app-settings', 'pouchdb', 'aurelia-framework', 'aurelia-logging-console'], function (exports, _aureliaFetchClient, _aureliaEventAggregator, _aureliaI18n, _semantic, _calendar, _flashErrorMessage, _semanticFormValidationRenderer, _appSettings, _pouchdb, _aureliaFramework, _aureliaLoggingConsole) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -409,8 +409,6 @@ define('main',['exports', 'aurelia-fetch-client', 'aurelia-event-aggregator', 'a
     var _semantic2 = _interopRequireDefault(_semantic);
 
     var _calendar2 = _interopRequireDefault(_calendar);
-
-    var _authConfig2 = _interopRequireDefault(_authConfig);
 
     var _appSettings2 = _interopRequireDefault(_appSettings);
 
@@ -438,11 +436,7 @@ define('main',['exports', 'aurelia-fetch-client', 'aurelia-event-aggregator', 'a
                 ns: ['translation'],
                 defaultNs: 'translation'
             });
-        }).plugin('aurelia-validation').plugin('aurelia-auth', function (baseConfig) {
-            baseConfig.baseUrl = _appSettings2.default.baseUrl;
-            baseConfig.configure(_authConfig2.default);
-        });
-        ;
+        }).plugin('aurelia-validation');
 
         configureContainer(aurelia.container);
 
@@ -540,7 +534,7 @@ define('components/top-bar',['exports', 'aurelia-framework', '../services/sessio
         TopBar.prototype.clearData = function clearData() {
             var _this2 = this;
 
-            this.db.removeUserDBs().then(function () {
+            this.db.removeDBs().then(function () {
                 return _this2.session.invalidate();
             });
         };
@@ -786,13 +780,9 @@ define('config/app-settings',['exports'], function (exports) {
         value: true
     });
     var settings = {
-        rootUrl: '',
-        envUrlPrefix: '',
-        baseUrl: '',
-        default_locale: 'km-KH',
+        remoteUrls: ['http://ruelle1.mykampot.com/', 'http://ruelle2.mykampot.com/'],
+        default_locale: 'fr-FR',
         debug: false,
-        country: 1,
-        view_notifications_timeout: 5000,
 
         calendar_text: {
             days: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
@@ -805,9 +795,6 @@ define('config/app-settings',['exports'], function (exports) {
         }
     };
 
-    settings.rootUrl = 'http://timesheet.local';
-    settings.envUrlPrefix = '/app_dev.php';
-    settings.baseUrl = settings.rootUrl + settings.envUrlPrefix;
     settings.debug = true;
 
     exports.default = settings;
@@ -936,7 +923,7 @@ define('services/accounting-service',['exports', 'aurelia-framework', './session
         return AccountingService;
     }()) || _class) || _class);
 });
-define('services/db-service',['exports', 'aurelia-framework', './session', 'pouchdb', 'pouchdb-upsert', 'moment', 'aurelia-event-aggregator', 'aurelia-fetch-client', './log'], function (exports, _aureliaFramework, _session, _pouchdb, _pouchdbUpsert, _moment, _aureliaEventAggregator, _aureliaFetchClient, _log) {
+define('services/db-service',['exports', 'aurelia-framework', './session', 'pouchdb', 'pouchdb-upsert', 'moment', 'aurelia-event-aggregator', 'aurelia-fetch-client', './log', '../config/app-settings', './sharding-service'], function (exports, _aureliaFramework, _session, _pouchdb, _pouchdbUpsert, _moment, _aureliaEventAggregator, _aureliaFetchClient, _log, _appSettings, _shardingService) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -949,6 +936,8 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
     var _pouchdbUpsert2 = _interopRequireDefault(_pouchdbUpsert);
 
     var _moment2 = _interopRequireDefault(_moment);
+
+    var _appSettings2 = _interopRequireDefault(_appSettings);
 
     function _interopRequireDefault(obj) {
         return obj && obj.__esModule ? obj : {
@@ -964,18 +953,17 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
 
     var _dec, _dec2, _class;
 
-    var DBService = exports.DBService = (_dec = (0, _aureliaFramework.inject)(_session.Session, _aureliaFetchClient.HttpClient, _aureliaEventAggregator.EventAggregator), _dec2 = (0, _aureliaFramework.singleton)(), _dec(_class = _dec2(_class = function () {
-        function DBService(session, http, ea) {
+    var DBService = exports.DBService = (_dec = (0, _aureliaFramework.inject)(_session.Session, _shardingService.ShardingService, _aureliaFetchClient.HttpClient, _aureliaEventAggregator.EventAggregator), _dec2 = (0, _aureliaFramework.singleton)(), _dec(_class = _dec2(_class = function () {
+        function DBService(session, sharding, http, ea) {
             _classCallCheck(this, DBService);
 
             this.dbs = new Map();
             this.syncHandlers = new Map();
             this.lastUpdates = new Map();
             this.lastSyncs = new Map();
-            this.userDBPrefixes = ['timesheet'];
-            this.userDBs = [];
 
             this.session = session;
+            this.sharding = sharding;
             this.http = http;
             this.ea = ea;
 
@@ -999,23 +987,22 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
 
             var db = new _pouchdb2.default(dbName, { skip_setup: true });
 
-            var handler = db.sync('https://proacti.cloudant.com/' + dbName, me.getSyncOptions()).on('change', function (change) {
+            this.addUpdateCheckpoint(dbName);
+
+            var handler = db.sync(this.sharding.getRemoteUrl() + dbName, me.getSyncOptions()).on('change', function (change) {
+
                 me.addSyncCheckpoint(dbName);
 
                 if (change.direction === 'pull') {
                     me.ea.publish('dbsync', { dbName: dbName });
                 }
+            }).on('paused', function (err) {
+                me.addSyncCheckpoint(dbName);
             }).on('error', function (err) {
                 me.handleSyncError(db, err);
             });
 
             this.syncHandlers.set(dbName, handler);
-
-            this.userDBPrefixes.forEach(function (prefix) {
-                if (dbName.match(new RegExp("^" + prefix))) {
-                    me.userDBs.push(dbName);
-                }
-            });
 
             return db;
         };
@@ -1059,29 +1046,27 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
             }
         };
 
-        DBService.prototype.removeUserDBs = function removeUserDBs() {
+        DBService.prototype.removeDBs = function removeDBs() {
             var me = this;
             var promises = [];
 
-            this.userDBs.forEach(function (dbName) {
-
-                _log.log.debug("Try deleting " + dbName);
-
-                if (me.dbs.has(dbName)) {
-
+            this.dbs.forEach(function (db, dbName) {
+                if (me.syncHandlers.has(dbName)) {
                     me.syncHandlers.get(dbName).cancel();
                     me.syncHandlers.delete(dbName);
-                    me.dbs.get(dbName).destroy();
-                    promises.push(me.dbs.delete(dbName));
-
-                    _log.log.debug("Deleted " + dbName);
                 }
+                me.dbs.delete(dbName);
+                promises.push(db.destroy());
             });
 
-            if (this.dbs.has('staff')) {
-                this.dbs.get('staff').destroy();
-                promises.push(this.dbs.delete('staff'));
-            }
+            window.indexedDB.webkitGetDatabaseNames().onsuccess = function (event) {
+                Array.prototype.forEach.call(event.target.result, indexedDB.deleteDatabase.bind(indexedDB));
+            };
+
+            localStorage.removeItem('last-updates');
+            localStorage.removeItem('last-syncs');
+            this.lastUpdates.clear();
+            this.lastSyncs.clear();
 
             return Promise.all(promises);
         };
@@ -1099,7 +1084,7 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
             var me = this;
             var promises = [];
 
-            return this.http.fetch('https://proacti.cloudant.com/_users/_all_docs?include_docs=true').then(function (response) {
+            return this.http.fetch(this.sharding.getRemoteUrl() + '_users/_all_docs?include_docs=true').then(function (response) {
                 return response.json();
             }).then(function (users) {
 
@@ -1125,7 +1110,7 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
                 return db.allDocs({ include_docs: true }).then(function (result) {
                     return result.rows;
                 }).catch(function (err) {
-                    _log.log.debug(err);
+                    _log.log.error(err);
                 });
             });
         };
@@ -1473,7 +1458,7 @@ define('services/route-loader',['exports', 'aurelia-framework', 'aurelia-fetch-c
         return RouteLoader;
     }()) || _class) || _class);
 });
-define('services/session',['exports', 'aurelia-framework', './route-loader', 'aurelia-router', 'aurelia-auth', 'aurelia-i18n', '../config/app-settings', 'aurelia-fetch-client', 'pouchdb'], function (exports, _aureliaFramework, _routeLoader, _aureliaRouter, _aureliaAuth, _aureliaI18n, _appSettings, _aureliaFetchClient, _pouchdb) {
+define('services/session',['exports', 'aurelia-framework', './route-loader', 'aurelia-router', 'aurelia-auth', 'aurelia-i18n', '../config/app-settings', 'aurelia-fetch-client', 'pouchdb', './log', './sharding-service'], function (exports, _aureliaFramework, _routeLoader, _aureliaRouter, _aureliaAuth, _aureliaI18n, _appSettings, _aureliaFetchClient, _pouchdb, _log, _shardingService) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -1499,13 +1484,14 @@ define('services/session',['exports', 'aurelia-framework', './route-loader', 'au
 
     var _dec, _dec2, _class;
 
-    var Session = exports.Session = (_dec = (0, _aureliaFramework.singleton)(), _dec2 = (0, _aureliaFramework.inject)(_routeLoader.RouteLoader, _aureliaRouter.Router, _aureliaAuth.AuthService, _aureliaI18n.I18N, _aureliaFetchClient.HttpClient), _dec(_class = _dec2(_class = function () {
-        function Session(loader, router, auth, i18n, http) {
+    var Session = exports.Session = (_dec = (0, _aureliaFramework.singleton)(), _dec2 = (0, _aureliaFramework.inject)(_routeLoader.RouteLoader, _aureliaRouter.Router, _aureliaAuth.AuthService, _shardingService.ShardingService, _aureliaI18n.I18N, _aureliaFetchClient.HttpClient), _dec(_class = _dec2(_class = function () {
+        function Session(loader, router, auth, sharding, i18n, http) {
             _classCallCheck(this, Session);
 
             this.loader = loader;
             this.router = router;
             this.auth = auth;
+            this.sharding = sharding;
             this.i18n = i18n;
             this.http = http;
 
@@ -1578,7 +1564,7 @@ define('services/session',['exports', 'aurelia-framework', './route-loader', 'au
             var username = userInfo[0];
             var password = userInfo[1];
 
-            var db = new _pouchdb2.default('https://proacti.cloudant.com/_users', {
+            var db = new _pouchdb2.default(this.sharding.getRemoteUrl() + '_users', {
                 skipSetup: true,
                 auth: {
                     "username": username,
@@ -1598,7 +1584,7 @@ define('services/session',['exports', 'aurelia-framework', './route-loader', 'au
                 me.persistToStorage();
                 return result;
             }).catch(function (err) {
-                console.log(err);
+                _log.log.error(err);
             });
         };
 
@@ -1640,7 +1626,7 @@ define('services/session',['exports', 'aurelia-framework', './route-loader', 'au
         };
 
         Session.prototype.isGranted = function isGranted(role) {
-            if (this.user === undefined) {
+            if (this.user === undefined || this.user === null) {
                 return false;
             }
             return this.user.roles.includes(role);
@@ -2064,7 +2050,7 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
 
         AdminReports.prototype.retrieveUsers = function retrieveUsers() {
             var me = this;
-            _log.log.error("ADMIN");
+
             return this.db.listUsers().then(function (response) {
                 response.forEach(function (user) {
                     me.users.set(user.doc.name, user);
@@ -2100,6 +2086,12 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
             this.users.forEach(function (user) {
 
                 promises.push(me.db.view('timesheet-' + user.doc.name, 'allocations/stats', me.month, me.getNextMonth(), false).then(function (entries) {
+
+                    if (entries === undefined) {
+                        return new Promise(function (resolve) {
+                            return resolve([]);
+                        });
+                    }
 
                     var allocationUserReports = [];
                     var reportsPromises = [];
@@ -2239,7 +2231,9 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
 
                 entry.ratio = entry.ratio.div(nbrReports);
             }
-            this.allocationReports.totals.ratio = this.allocationReports.totals.ratio.div(nbrReports);
+            if (this.allocationReports.totals.ratio !== undefined) {
+                this.allocationReports.totals.ratio = this.allocationReports.totals.ratio.div(nbrReports);
+            }
 
             this.generateExportLink();
         };
@@ -2270,7 +2264,7 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
                 lnk = document.getElementById(user + '-csv-export-link');
             }
 
-            if (lnk === null) {
+            if (lnk === null || reports.entries.length === 0) {
                 return;
             }
 
@@ -2693,7 +2687,7 @@ define('pages/admin/users-timesheets',['exports', 'aurelia-framework', 'aurelia-
 
         UsersTimesheets.prototype.retrieveUsers = function retrieveUsers() {
             var me = this;
-            _log.log.error("USERS");
+
             return this.db.listUsers().then(function (response) {
                 response.forEach(function (user) {
                     me.users.set(user.doc.name, user);
@@ -2833,7 +2827,6 @@ define('pages/timesheets/monthly-timesheet',['exports', 'aurelia-framework', 'au
             this.retrieveData();
 
             this.ea.subscribe('dbsync', function (response) {
-                console.log("DBSYNC");
                 me.retrieveData();
             });
         };
@@ -2878,10 +2871,8 @@ define('pages/timesheets/monthly-timesheet',['exports', 'aurelia-framework', 'au
 
         MonthlyTimesheet.prototype.getTimesheet = function getTimesheet() {
             var me = this;
-            console.log("LISTTIMESHEET");
+
             return this.db.get('timesheet-' + this.session.getUser().name, this.timesheetId).then(function (response) {
-                console.log("RESPONSE");
-                console.log(response);
                 me.entity = response;
                 return new Promise(function (resolve) {
                     resolve();
@@ -3102,8 +3093,6 @@ define('pages/timesheets/timesheet-entry',['exports', 'aurelia-framework', 'aure
         }
 
         TimesheetEntry.prototype.activate = function activate(params, routeConfig, navigationInstruction) {
-            console.log(params);
-            console.log(navigationInstruction);
             if (params.timesheetId && params.entryId) {
                 this.getTimesheetEntry(params.timesheetId, params.entryId);
             }
@@ -3225,8 +3214,6 @@ define('pages/timesheets/timesheet-entry',['exports', 'aurelia-framework', 'aure
 
                     timesheet.entries = [_this.entity].concat(timesheet.entries);
 
-                    console.log(timesheet);
-
                     _this.db.save('timesheet-' + _this.session.getUser().name, timesheet).then(function () {
                         return _this.ea.publish(new _flashSuccessMessage.FlashSuccessMessage(_this.i18n.tr('success')));
                     });
@@ -3250,7 +3237,6 @@ define('pages/timesheets/timesheet-entry',['exports', 'aurelia-framework', 'aure
                     }
                 });
             });
-            console.log(errors);
         };
 
         _createClass(TimesheetEntry, [{
@@ -3376,13 +3362,11 @@ define('pages/timesheets/timesheets',['exports', 'aurelia-framework', 'aurelia-f
         }
 
         Timesheets.prototype.activate = function activate(params) {
-            console.log("ACTIVATE");
             var me = this;
 
             this.retrieveData();
 
             this.ea.subscribe('dbsync', function (response) {
-                console.log("DBSYNC");
                 me.retrieveData();
             });
         };
@@ -3414,10 +3398,8 @@ define('pages/timesheets/timesheets',['exports', 'aurelia-framework', 'aurelia-f
 
         Timesheets.prototype.getLastTimesheet = function getLastTimesheet() {
             var me = this;
-            console.log("LISTTIMESHEET");
+
             return this.db.list('timesheet-' + this.session.getUser().name, 1, true).then(function (response) {
-                _log.log.debug("RESPONSE");
-                _log.log.debug(response);
 
                 me.lastTimesheet = {
                     doc: {
@@ -3428,7 +3410,7 @@ define('pages/timesheets/timesheets',['exports', 'aurelia-framework', 'aurelia-f
                 if (response.length > 0) {
                     me.lastTimesheet = response[0];
                 }
-                _log.log.debug(me.lastTimesheet);
+
                 return new Promise(function (resolve) {
                     resolve();
                 });
@@ -3442,9 +3424,6 @@ define('pages/timesheets/timesheets',['exports', 'aurelia-framework', 'aurelia-f
         };
 
         Timesheets.prototype.saveEntry = function saveEntry(entry) {
-            console.log("SAVVVVVVVVVV");
-            console.log(entry);
-
             this.getLastTimesheet();
         };
 
@@ -3490,9 +3469,7 @@ define('pages/user/logged-redirect',['exports', 'aurelia-framework', 'aurelia-ro
 
         LoggedRedirect.prototype.activate = function activate() {
             var router = this.router;
-            console.log("activate");
             this.session.start().then(function () {
-                console.log("NAV");
                 router.navigate('app/timesheets');
             }).catch(function (err) {
                 console.log(err);
@@ -3502,7 +3479,7 @@ define('pages/user/logged-redirect',['exports', 'aurelia-framework', 'aurelia-ro
         return LoggedRedirect;
     }()) || _class);
 });
-define('pages/user/login',['exports', 'aurelia-framework', 'aurelia-auth', 'aurelia-router', '../../services/session', '../../config/app-settings', 'pouchdb', 'pouchdb-authentication', '../../services/log'], function (exports, _aureliaFramework, _aureliaAuth, _aureliaRouter, _session, _appSettings, _pouchdb, _pouchdbAuthentication, _log) {
+define('pages/user/login',['exports', 'aurelia-framework', 'aurelia-auth', 'aurelia-router', '../../services/session', '../../config/app-settings', 'pouchdb', 'pouchdb-authentication', '../../services/log', '../../services/sharding-service'], function (exports, _aureliaFramework, _aureliaAuth, _aureliaRouter, _session, _appSettings, _pouchdb, _pouchdbAuthentication, _log, _shardingService) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -3530,11 +3507,12 @@ define('pages/user/login',['exports', 'aurelia-framework', 'aurelia-auth', 'aure
 
     var _dec, _class;
 
-    var Login = exports.Login = (_dec = (0, _aureliaFramework.inject)(_aureliaAuth.AuthService, _aureliaRouter.Router, _session.Session), _dec(_class = function () {
-        function Login(auth, router, session) {
+    var Login = exports.Login = (_dec = (0, _aureliaFramework.inject)(_aureliaAuth.AuthService, _shardingService.ShardingService, _aureliaRouter.Router, _session.Session), _dec(_class = function () {
+        function Login(auth, sharding, router, session) {
             _classCallCheck(this, Login);
 
             this.auth = auth;
+            this.sharding = sharding;
             this.router = router;
             this.session = session;
             this.settings = _appSettings2.default;
@@ -3546,11 +3524,9 @@ define('pages/user/login',['exports', 'aurelia-framework', 'aurelia-auth', 'aure
 
             _pouchdb2.default.plugin(_pouchdbAuthentication2.default);
 
-            var db = new _pouchdb2.default('https://proacti.cloudant.com/timesheet-jerome', { skipSetup: true });
+            var db = new _pouchdb2.default(this.sharding.getRemoteUrl() + '_users', { skipSetup: true });
             db.login(this.username, this.password, function (err, response) {
 
-                console.log("RESPONSE:");
-                console.log(response);
                 if (err) {
                     _log.log.error(err);
                     login.loginError = err.name;
@@ -4157,14 +4133,10 @@ define('resources/dropdown/dropdown',['exports', 'aurelia-framework', '../../ser
                     this.selectedEntryName = entry.doc.name;
                 }
             }
-            console.log("DRRRROP");
-            console.log(this.selectedEntryName);
-            console.log(this.getPlaceHolder());
+
             if (this.selectedEntryName && this.selectedEntryName != this.getPlaceHolder()) {
                 $(this.element).find('.text').removeClass('default');
-                console.log("REMOVE");
             } else {
-                console.log("RESTORE");
                 this.restoreDefaults();
             }
         };
@@ -12114,6 +12086,58 @@ define('aurelia-dialog/dialog-service',['exports', 'aurelia-metadata', 'aurelia-
       service.hasActiveDialog = !!service.controllers.length;
     }
   }
+});
+define('services/sharding-service',['exports', 'aurelia-framework', '../config/app-settings'], function (exports, _aureliaFramework, _appSettings) {
+    'use strict';
+
+    Object.defineProperty(exports, "__esModule", {
+        value: true
+    });
+    exports.ShardingService = undefined;
+
+    var _appSettings2 = _interopRequireDefault(_appSettings);
+
+    function _interopRequireDefault(obj) {
+        return obj && obj.__esModule ? obj : {
+            default: obj
+        };
+    }
+
+    function _classCallCheck(instance, Constructor) {
+        if (!(instance instanceof Constructor)) {
+            throw new TypeError("Cannot call a class as a function");
+        }
+    }
+
+    var _dec, _class;
+
+    var MAX_CONNECTIONS = 6;
+
+    var ShardingService = exports.ShardingService = (_dec = (0, _aureliaFramework.singleton)(false), _dec(_class = function () {
+        function ShardingService() {
+            _classCallCheck(this, ShardingService);
+
+            this.curIndex = 0;
+            this.curConnections = 0;
+        }
+
+        ShardingService.prototype.getRemoteUrl = function getRemoteUrl() {
+
+            if (this.curConnections >= MAX_CONNECTIONS) {
+                this.curConnections = 0;
+                this.curIndex++;
+            }
+
+            if (this.curIndex === _appSettings2.default.remoteUrls.length) {
+                this.curIndex = 0;
+            }
+
+            this.curConnections++;
+            return _appSettings2.default.remoteUrls[this.curIndex];
+        };
+
+        return ShardingService;
+    }()) || _class);
 });
 define('text!app.html', ['module'], function(module) { module.exports = "<template>\n  <require from=\"semantic/semantic.css\"></require>\n  <require from=\"./styles/styles.css\"></require>\n\n  <router-view></router-view>\n\n</template>\n\n"; });
 define('text!styles/styles.css', ['module'], function(module) { module.exports = "body {\n  margin: 0;\n}\n\n.splash {\n  text-align: center;\n  margin: 10% 0 0 0;\n  box-sizing: border-box;\n}\n\n.splash .message {\n  font-size: 72px;\n  line-height: 72px;\n  text-shadow: rgba(0, 0, 0, 0.5) 0 0 15px;\n  text-transform: uppercase;\n  font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n}\n\n.splash .fa-spinner {\n  text-align: center;\n  display: inline-block;\n  font-size: 72px;\n  margin-top: 50px;\n}\n\nai-dialog-container.active .ui.modal {\n  display: block;\n}\n\n.page-host {\n}\n\n@media print {\n  .page-host {\n    position: absolute;\n    left: 10px;\n    right: 0;\n    top: 50px;\n    bottom: 0;\n    overflow-y: inherit;\n    overflow-x: inherit;\n  }\n}\n\nsection {\n  margin: 0 20px;\n}\n\n/* Navbar */\n.ui.menu.navbar {\n  margin-top: 0;\n}\n\n.navbar-nav li.loader {\n  margin: 12px 24px 0 6px;\n}\n\n.pictureDetail {\n  max-width: 425px;\n}\n\n/* animate page transitions */\nsection.au-enter-active {\n  -webkit-animation: fadeInRight 1s;\n  animation: fadeInRight 1s;\n}\n\ndiv.au-stagger {\n  /* 50ms will be applied between each successive enter operation */\n  -webkit-animation-delay: 50ms;\n  animation-delay: 50ms;\n}\n\n/* Login aligned in middle */\ndiv.ui.login.grid {\n  height: 100%;\n}\n\n/* New and Edit Entry Form */\ntimesheet-entry {\n  width: 90%;\n}\n\n.timesheet-entry .ui.calendar {\n  margin-left: 0.5em;\n}\n\n.timesheet-entry + .ui.button {\n  margin-top: 20px;\n}\n\n/** List of previous timesheet entries **/\n.timesheet .ui.fluid.entries {\n  width: 90%;\n}\n\n.timesheet .ui.fluid.entries .title {\n  text-align: left;\n  background-color: #F8F8F9;\n}\n\n/** Admin allocation panel **/\n\n.user.timesheet,\n.user.report {\n  margin-bottom: 20px;\n}\n\n.user.timesheet .button {\n  vertical-align: middle;\n  margin: auto;\n  margin-left: 0;\n}\n\n/* Cards */\n\n.card-container.au-enter {\n  opacity: 0;\n}\n\n.card-container.au-enter-active {\n  -webkit-animation: fadeIn 2s;\n  animation: fadeIn 2s;\n}\n\n.card {\n  overflow: hidden;\n  position: relative;\n  border: 1px solid #CCC;\n  border-radius: 8px;\n  text-align: center;\n  padding: 0;\n  background-color: #337ab7;\n  color: rgb(136, 172, 217);\n  margin-bottom: 32px;\n  box-shadow: 0 0 5px rgba(0, 0, 0, .5);\n}\n\n.card .content {\n  margin-top: 10px;\n}\n\n.card .content .name {\n  color: white;\n  text-shadow: 0 0 6px rgba(0, 0, 0, .5);\n  font-size: 18px;\n}\n\n.card .header-bg {\n  /* This stretches the canvas across the entire hero unit */\n  position: absolute;\n  top: 0;\n  left: 0;\n  width: 100%;\n  height: 70px;\n  border-bottom: 1px #FFF solid;\n  border-radius: 6px 6px 0 0;\n}\n\n.card .avatar {\n  position: relative;\n  margin-top: 15px;\n  z-index: 100;\n}\n\n.card .avatar img {\n  width: 100px;\n  height: 100px;\n  -webkit-border-radius: 50%;\n  -moz-border-radius: 50%;\n  border-radius: 50%;\n  border: 2px #FFF solid;\n}\n\n/** Flash Messages **/\n.flash {\n    margin-bottom: 20px;\n}\n\n.flash .message {\n    display: none;\n}\n\n.flash .message.background-animation-add,\n.flash .message.background-animation-remove {\n    display: block;\n}\n\n.background-animation-add.positive {\n    display: block;\n    -webkit-animation: flashSuccess 4s;\n    animation: flashSuccess 4s;\n}\n\n.background-animation-add.negative {\n    display: block;\n    -webkit-animation: flashError 8s;\n    animation: flashError 8s;\n    color: white;\n}\n\n@-webkit-keyframes flashSuccess {\n    0% { background-color: white; }\n    25% { background-color: #a3c293; }\n    50% { background-color: white; }\n    75% { background-color: #a3c293; }\n    100% { background-color: white; }\n}\n\n@keyframes flashSuccess {\n    0% { background-color: white; }\n    25% { background-color: #a3c293; }\n    50% { background-color: white; }\n    75% { background-color: #a3c293; }\n    100% { background-color: white; }\n}\n\n@-webkit-keyframes flashError {\n    0% { background-color: #FFF6F6; }\n    5% { background-color: #9f3a38; }\n    15% { background-color: #FFF6F6; }\n}\n\n@keyframes flashError {\n    0% { background-color: #FFF6F6; }\n    5% { background-color: #9f3a38; }\n    15% { background-color: #FFF6F6; }\n}\n\n@media only screen and (max-device-width: 767px) {\n\n  .timesheet-entry .ui.calendar {\n    margin-left: 0;\n  }\n\n  .timesheet-entry.ui.form .two.hours.fields > .field {\n    width: 50% !important;\n  }\n\n  .timesheet-entry.ui.form .two.hours.fields > .field input {\n    width: 60px;\n  }\n\n  .ui.monthly.timesheet.table thead {\n    display: none;\n  }\n}"; });

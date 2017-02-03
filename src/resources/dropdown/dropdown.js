@@ -130,18 +130,14 @@ export class DropDownCustomElement {
                 this.selectedEntryName = entry.doc.name;
             }            
         }
-console.log("DRRRROP");
-console.log(this.selectedEntryName);
-console.log(this.getPlaceHolder());
+
         if (
             this.selectedEntryName &&
             this.selectedEntryName != this.getPlaceHolder()
         ) {
             $(this.element).find('.text')
             .removeClass('default');
-            console.log("REMOVE");
         } else {
-            console.log("RESTORE");
             this.restoreDefaults();
         }
     }
