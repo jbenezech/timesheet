@@ -2,7 +2,12 @@ import {inject} from 'aurelia-dependency-injection';
 import {ValidationRenderer, RenderInstruction, ValidateResult} from 'aurelia-validation';
 
 @inject(Element)
+
+/**
+ * Form validation renderer for Semantic-UI forms 
+ */
 export class SemanticFormValidationRenderer {
+
     constructor(boundaryElement) {
         this.boundaryElement = boundaryElement;
     }
@@ -46,6 +51,7 @@ export class SemanticFormValidationRenderer {
         message.textContent = result.message;
         message.error = result;
         field.appendChild(message);
+        
     }
 
     remove(target, result) {
@@ -71,6 +77,7 @@ export class SemanticFormValidationRenderer {
             message.result = null;
             message.remove();
         }
+        
     }
 }
 

@@ -1,17 +1,15 @@
-import { inject, NewInstance, bindable, observable } from 'aurelia-framework';
-import { HttpClient } from 'aurelia-fetch-client';
+import { inject, bindable } from 'aurelia-framework';
 import { EventAggregator } from 'aurelia-event-aggregator';
-import { ValidationController } from 'aurelia-validation';
-import { TimesheetsRouter } from './timesheets-router';
+
 import { Session } from '../../services/session';
 import { DBService } from '../../services/db-service';
-import settings from '../../config/app-settings';
-import moment from 'moment';
-import { FlashSuccessMessage } from '../../resources/flash/flash-success-message';
-import { I18N } from 'aurelia-i18n';
 import { log } from '../../services/log';
 
-@inject(Session, DBService, EventAggregator, I18N)
+@inject(Session, DBService, EventAggregator)
+
+/**
+ * VM to show new timesheet entry form and list of previous entries
+ */
 export class Timesheets {
 
     purposes = new Map();
@@ -21,41 +19,25 @@ export class Timesheets {
         }
     };
     
-    constructor(session, db, ea, i18n) {
+    constructor(session, db, ea) {
         this.session = session;
         this.db = db;
         this.ea = ea;
-        this.i18n = i18n;
-    }
-
-    activate(params) {
-        let me = this;        
-
-        this.retrieveData();
-
-        this.ea.subscribe('dbsync', response => {
-            me.retrieveData();
-        });
     }
     
     retrieveData() {
         //first load purposes to show names in the list
-        this.listPurposes().then( response => {
-            this.getLastTimesheet();
-        });
+        this.listPurposes()
+        .then( () => this.getLastTimesheet() );
     }
 
     listPurposes() {
         let me = this;
         return this.db.list('purpose').then( response => {
 
-            if (response) {
-
-                response.forEach(function (purpose) {
-                    me.purposes.set(purpose.id, purpose.doc.name);
-                })               
-            
-            }
+            response.map ( (purpose) => {
+                me.purposes.set(purpose.id, purpose.doc.name);
+            })
 
             return new Promise((resolve) => { resolve(); });
         });
@@ -86,22 +68,21 @@ export class Timesheets {
                exclusive: true
            })
         ;
+
+        this.retrieveData();
+
+        this.subscriber = this.ea.subscribe('dbsync', response => {
+            me.retrieveData();
+        });
+    }
+
+    detached() {
+        this.subscriber.dispose();
     }
 
     saveEntry(entry) {
+        //when an entry is saved, retrieve the last timesheet entries as they might have changed
         this.getLastTimesheet();
     }
 
-    edit($event, entity) {
-        this.editing = entity;
-    }
-
-    cancel() {
-        this.editing = { id: -1 };
-        this.creating = false;
-    }
-
-    create() {
-        this.creating = true;
-    }
 }

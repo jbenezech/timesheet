@@ -1,22 +1,16 @@
 
-import { inject, NewInstance, bindable, observable } from 'aurelia-framework';
-import { HttpClient } from 'aurelia-fetch-client';
-import { EventAggregator } from 'aurelia-event-aggregator';
-import { AdminRouter } from './admin-router';
-import { Session } from '../../services/session';
-import { DBService } from '../../services/db-service';
-import settings from '../../config/app-settings';
+import { inject } from 'aurelia-framework';
 import moment from 'moment';
 import { I18N } from 'aurelia-i18n';
 
-@inject(Element, Session, DBService, I18N, AdminRouter)
+import { AdminRouter } from './admin-router';
+import settings from '../../config/app-settings';
+
+@inject(Element, AdminRouter)
 export class Planning {
 
-    constructor(element, session, db, i18n, router) {
+    constructor(element, router) {
         this.element = element;
-        this.session = session;
-        this.db = db;
-        this.i18n = i18n;
         this.router = router;
     }
 

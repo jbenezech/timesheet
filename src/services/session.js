@@ -1,25 +1,26 @@
 import { inject, singleton } from 'aurelia-framework';
-import { RouteLoader } from './route-loader';
 import { Router } from 'aurelia-router';
 import { AuthService } from 'aurelia-auth';
 import {I18N} from 'aurelia-i18n';
-import settings from '../config/app-settings';
-import {HttpClient} from 'aurelia-fetch-client';
 import PouchDB from 'pouchdb';
+
+import settings from '../config/app-settings';
 import { log } from './log';
 import { ShardingService } from './sharding-service';
 
 @singleton()
-@inject(RouteLoader, Router, AuthService, ShardingService, I18N, HttpClient)
+@inject(Router, AuthService, ShardingService, I18N)
+
+/**
+ * Service to handle session related information
+ */
 export class Session {
 
-    constructor(loader, router, auth, sharding, i18n, http) {
-        this.loader = loader;
+    constructor(router, auth, sharding, i18n) {
         this.router = router;
         this.auth = auth;
         this.sharding = sharding;
         this.i18n = i18n;
-        this.http = http;
 
         this.loadFromStorage();
         this.locale = this.getLocale();
@@ -27,32 +28,21 @@ export class Session {
             .setLocale(this.locale);
 
         this.started = false;
-
-        this.setBaseUrl();
     }
-
+    
     start() {
         let me = this;
 
+        //reload the user from remote if possible when the session start
+        //in case his info have changed
         return this.loadUserFromBackend().then( () => {
 
             me.started = true;
-            return true;
+            return new Promise((resolve) => { resolve(); });
             
         }).catch (function (err) {
-            console.log(err);
+            log.error(err);
         });
-    }
-
-    setBaseUrl() {
-        settings.baseUrl = 
-            settings.rootUrl + 
-            settings.envUrlPrefix +
-            '/' + 
-            this.locale + 
-            '/' + 
-            'api/'
-        ;    
     }
 
     isStarted() {
@@ -85,10 +75,6 @@ export class Session {
         return this.user;
     }
     
-    userHasRole(role) {
-        return this.user !== undefined && this.user !== null && this.user.roles.includes(role);
-    }
-
     loadUserFromBackend() {
 
         if (localStorage.getItem('aurelia_token') === null) {
@@ -154,14 +140,9 @@ export class Session {
         this.locale = locale;
         this.setBaseUrl();
         this.i18n.setLocale(this.locale);
-        this.http.configure(config => {
-            config
-                .withBaseUrl(settings.baseUrl)
-        });
+
         this.persistToStorage();
         
-        this.loader.invalidateCache();
-
         this.router.navigate(this.router.history.fragment, {replace:true});
     }
 

@@ -1,36 +1,23 @@
 import { HttpClient } from 'aurelia-fetch-client';
 import { inject } from 'aurelia-framework';
-import {Container} from 'aurelia-dependency-injection';
-import {I18N} from 'aurelia-i18n';
-import {AuthorizeStep, AuthService, FetchConfig} from 'aurelia-auth';
-import { EventAggregator } from 'aurelia-event-aggregator';
-import { FlashErrorMessage } from './resources/flash/flash-error-message';
-import settings from './config/app-settings';
-import { Session} from './services/session';
+import { I18N } from 'aurelia-i18n';
+import { AuthorizeStep } from 'aurelia-auth';
 
-@inject(I18N, FetchConfig, AuthService, HttpClient, EventAggregator, Session)
+@inject(I18N, HttpClient)
 export class App {
 
-    constructor(i18n, fetchConfig, authService, httpClient, aggregator, session) {
-    
+    constructor(i18n, httpClient) {
         this.i18n = i18n;
-        this.fetchConfig = fetchConfig;
-        this.authService = authService;
         this.httpClient = httpClient;
-        this.ea = aggregator;
-        this.session = session;
-
     }
 
     activate() {
     
-        let ea = this.ea;
         let i18n = this.i18n;
 
         this.httpClient.configure(config => {
         config
             .useStandardConfiguration()
-            .withBaseUrl(settings.baseUrl)
             .withDefaults({
             credentials: 'same-origin',
             headers: {

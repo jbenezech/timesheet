@@ -1,16 +1,17 @@
 
-import { BindingEngine, inject, NewInstance, bindable, observable } from 'aurelia-framework';
-import { EventAggregator } from 'aurelia-event-aggregator';
-import { AdminRouter } from './admin-router';
-import { Session } from '../../services/session';
-import { DBService } from '../../services/db-service';
-import settings from '../../config/app-settings';
-import moment from 'moment';
+import { inject, NewInstance, bindable } from 'aurelia-framework';
 import { I18N } from 'aurelia-i18n';
-import {ValidationRules, ValidationController} from 'aurelia-validation';
+import { ValidationRules, ValidationController } from 'aurelia-validation';
 import Decimal from 'decimal';
 
-@inject(Element, Session, DBService, I18N, EventAggregator, BindingEngine, NewInstance.of(ValidationController), AdminRouter)
+import { AdminRouter } from './admin-router';
+import { DBService } from '../../services/db-service';
+
+@inject(DBService, I18N, NewInstance.of(ValidationController), AdminRouter)
+
+/**
+ * VM for a single user timesheet
+ */
 export class UserTimesheet {
 
     @bindable timesheet = {};
@@ -20,13 +21,9 @@ export class UserTimesheet {
     @bindable accountingRules;
     salary;
 
-    constructor(element, session,db, i18n, ea, bindingEngine, controller, router) {
-        this.element = element;
-        this.session = session;
+    constructor(db, i18n, controller, router) {
         this.db = db;
         this.i18n = i18n;
-        this.ea = ea;
-        this.bindingEngine = bindingEngine;
         this.controller = controller;
         this.router = router;
     }
@@ -40,8 +37,6 @@ export class UserTimesheet {
 
         ValidationRules
             .ensure('salary').required()
-            .matches(/^[\d]+[\.|]?[\d]*$/).withMessage(this.i18n.tr('error_number'))
-            .ensure('charges').required()
             .matches(/^[\d]+[\.|]?[\d]*$/).withMessage(this.i18n.tr('error_number'))
             .on(this.timesheet);
 
@@ -71,6 +66,7 @@ export class UserTimesheet {
 
     calculateRatios() {
 
+        //calculate the ratio to apply to each entry based on the number of hours
         let totalHours = 0;
         this.timesheet.entries.forEach( (entry) => totalHours += entry.duration );
         this.timesheet.entries.forEach( (entry) => {
@@ -87,6 +83,7 @@ export class UserTimesheet {
                 return;
             }
 
+            //manually update the timesheet as binding doesn't work with semantic checkbox
             this.timesheet.precarite = $('.' + userName + ' .precarite.checkbox').checkbox('is checked');
 
             //save and retrieve the latest revision of the timesheet for that user

@@ -1,28 +1,26 @@
-import {inject} from 'aurelia-framework';
-import {AuthService} from 'aurelia-auth';
-import {Router} from 'aurelia-router';
-import {Session} from '../../services/session';
-import settings from '../../config/app-settings';
+import { inject } from 'aurelia-framework';
+import { Router } from 'aurelia-router';
 import PouchDB from 'pouchdb';
+
 import PouchDBAuthentication from 'pouchdb-authentication';
 import { log } from '../../services/log';
 import { ShardingService } from '../../services/sharding-service';
 
-@inject(AuthService, ShardingService, Router, Session)
+@inject(ShardingService, Router)
 
+/**
+ * VM for login. Authenticates against remote database
+ */
 export class Login {
 
-    constructor(auth, sharding, router, session){
-        this.auth = auth;
+    constructor(sharding, router){
         this.sharding = sharding;
         this.router = router;
-        this.session = session;
-        this.settings = settings;
     };
     
     login() {
 
-        let login = this;
+        let me = this;
         
         PouchDB.plugin(PouchDBAuthentication);
 
@@ -31,13 +29,13 @@ export class Login {
 
             if (err) {
                 log.error(err);
-                login.loginError = err.name;
+                me.loginError = err.name;
                 $('.ui.form .login.error.message').show();
                 return;
             }
 
-            localStorage.setItem('aurelia_token', btoa(login.username + ':' + login.password));
-            login.router.navigate('loggedIn');
+            localStorage.setItem('aurelia_token', btoa(me.username + ':' + me.password));
+            me.router.navigate('loggedIn');
         });
     };
 

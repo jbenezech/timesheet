@@ -1,18 +1,10 @@
-define('app',['exports', 'aurelia-fetch-client', 'aurelia-framework', 'aurelia-dependency-injection', 'aurelia-i18n', 'aurelia-auth', 'aurelia-event-aggregator', './resources/flash/flash-error-message', './config/app-settings', './services/session'], function (exports, _aureliaFetchClient, _aureliaFramework, _aureliaDependencyInjection, _aureliaI18n, _aureliaAuth, _aureliaEventAggregator, _flashErrorMessage, _appSettings, _session) {
+define('app',['exports', 'aurelia-fetch-client', 'aurelia-framework', 'aurelia-i18n', 'aurelia-auth'], function (exports, _aureliaFetchClient, _aureliaFramework, _aureliaI18n, _aureliaAuth) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
         value: true
     });
     exports.App = undefined;
-
-    var _appSettings2 = _interopRequireDefault(_appSettings);
-
-    function _interopRequireDefault(obj) {
-        return obj && obj.__esModule ? obj : {
-            default: obj
-        };
-    }
 
     function _classCallCheck(instance, Constructor) {
         if (!(instance instanceof Constructor)) {
@@ -22,25 +14,20 @@ define('app',['exports', 'aurelia-fetch-client', 'aurelia-framework', 'aurelia-d
 
     var _dec, _class;
 
-    var App = exports.App = (_dec = (0, _aureliaFramework.inject)(_aureliaI18n.I18N, _aureliaAuth.FetchConfig, _aureliaAuth.AuthService, _aureliaFetchClient.HttpClient, _aureliaEventAggregator.EventAggregator, _session.Session), _dec(_class = function () {
-        function App(i18n, fetchConfig, authService, httpClient, aggregator, session) {
+    var App = exports.App = (_dec = (0, _aureliaFramework.inject)(_aureliaI18n.I18N, _aureliaFetchClient.HttpClient), _dec(_class = function () {
+        function App(i18n, httpClient) {
             _classCallCheck(this, App);
 
             this.i18n = i18n;
-            this.fetchConfig = fetchConfig;
-            this.authService = authService;
             this.httpClient = httpClient;
-            this.ea = aggregator;
-            this.session = session;
         }
 
         App.prototype.activate = function activate() {
 
-            var ea = this.ea;
             var i18n = this.i18n;
 
             this.httpClient.configure(function (config) {
-                config.useStandardConfiguration().withBaseUrl(_appSettings2.default.baseUrl).withDefaults({
+                config.useStandardConfiguration().withDefaults({
                     credentials: 'same-origin',
                     headers: {
                         'Accept': 'application/json',
@@ -398,7 +385,7 @@ define('environment',["exports"], function (exports) {
     testing: true
   };
 });
-define('main',['exports', 'aurelia-fetch-client', 'aurelia-event-aggregator', 'aurelia-i18n', 'semantic', 'semantic-calendar/calendar', 'resources/flash/flash-error-message', 'lib/form/semantic-form-validation-renderer', './config/app-settings', 'pouchdb', 'aurelia-framework', 'aurelia-logging-console'], function (exports, _aureliaFetchClient, _aureliaEventAggregator, _aureliaI18n, _semantic, _calendar, _flashErrorMessage, _semanticFormValidationRenderer, _appSettings, _pouchdb, _aureliaFramework, _aureliaLoggingConsole) {
+define('main',['exports', 'aurelia-fetch-client', 'aurelia-event-aggregator', 'aurelia-i18n', 'semantic', 'semantic-calendar/calendar', 'pouchdb', 'aurelia-framework', 'aurelia-logging-console', 'lib/form/semantic-form-validation-renderer', './config/app-settings'], function (exports, _aureliaFetchClient, _aureliaEventAggregator, _aureliaI18n, _semantic, _calendar, _pouchdb, _aureliaFramework, _aureliaLoggingConsole, _semanticFormValidationRenderer, _appSettings) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -410,9 +397,9 @@ define('main',['exports', 'aurelia-fetch-client', 'aurelia-event-aggregator', 'a
 
     var _calendar2 = _interopRequireDefault(_calendar);
 
-    var _appSettings2 = _interopRequireDefault(_appSettings);
-
     var _pouchdb2 = _interopRequireDefault(_pouchdb);
+
+    var _appSettings2 = _interopRequireDefault(_appSettings);
 
     function _interopRequireDefault(obj) {
         return obj && obj.__esModule ? obj : {
@@ -424,19 +411,20 @@ define('main',['exports', 'aurelia-fetch-client', 'aurelia-event-aggregator', 'a
     _aureliaFramework.LogManager.setLevel(_aureliaFramework.LogManager.logLevel.debug);
 
     function configure(aurelia) {
-        aurelia.use.standardConfiguration().developmentLogging().plugin("aurelia-dialog").plugin('aurelia-i18n', function (instance) {
+        aurelia.use.standardConfiguration().developmentLogging().plugin("aurelia-dialog").plugin('aurelia-validation').plugin('aurelia-i18n', function (instance) {
             instance.i18next.options.load = 'currentOnly';
             instance.i18next.options.lowerCaseLng = false;
             instance.i18next.options.cleanCode = false;
 
             return instance.setup({
-                lngs: ['en-US', 'km-KH'],
+                lngs: ['en-US', 'fr-FR'],
                 fallbackLng: _appSettings2.default.default_locale,
-                debug: false,
+                debug: _appSettings2.default.debug,
+
                 ns: ['translation'],
                 defaultNs: 'translation'
             });
-        }).plugin('aurelia-validation');
+        });
 
         configureContainer(aurelia.container);
 
@@ -456,7 +444,7 @@ define('main',['exports', 'aurelia-fetch-client', 'aurelia-event-aggregator', 'a
         });
     }
 });
-define('components/top-bar',['exports', 'aurelia-framework', '../services/session', 'aurelia-i18n', '../services/db-service', 'aurelia-dialog', '../resources/confirmation/confirmation', '../config/app-settings', 'aurelia-router', 'aurelia-event-aggregator'], function (exports, _aureliaFramework, _session, _aureliaI18n, _dbService, _aureliaDialog, _confirmation, _appSettings, _aureliaRouter, _aureliaEventAggregator) {
+define('components/top-bar',['exports', 'aurelia-framework', 'aurelia-i18n', 'aurelia-dialog', 'aurelia-event-aggregator', '../resources/confirmation/confirmation', '../services/db-service', '../services/session', '../config/app-settings', '../services/log'], function (exports, _aureliaFramework, _aureliaI18n, _aureliaDialog, _aureliaEventAggregator, _confirmation, _dbService, _session, _appSettings, _log) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -498,11 +486,10 @@ define('components/top-bar',['exports', 'aurelia-framework', '../services/sessio
 
     var _dec, _class;
 
-    var TopBar = exports.TopBar = (_dec = (0, _aureliaFramework.inject)(_session.Session, _aureliaI18n.I18N, _dbService.DBService, _aureliaDialog.DialogService, _aureliaEventAggregator.EventAggregator, _aureliaRouter.Router), _dec(_class = function () {
-        function TopBar(session, i18n, db, dialogService, ea, router) {
+    var TopBar = exports.TopBar = (_dec = (0, _aureliaFramework.inject)(_session.Session, _aureliaI18n.I18N, _dbService.DBService, _aureliaDialog.DialogService, _aureliaEventAggregator.EventAggregator), _dec(_class = function () {
+        function TopBar(session, i18n, db, dialogService, ea) {
             _classCallCheck(this, TopBar);
 
-            this.title = 'Timeflies';
             this.error = false;
 
             this.session = session;
@@ -510,8 +497,6 @@ define('components/top-bar',['exports', 'aurelia-framework', '../services/sessio
             this.db = db;
             this.dialogService = dialogService;
             this.ea = ea;
-            this.router = router;
-            this.title = this.i18n.tr('site_title');
         }
 
         TopBar.prototype.logout = function logout() {
@@ -542,10 +527,9 @@ define('components/top-bar',['exports', 'aurelia-framework', '../services/sessio
         TopBar.prototype.attached = function attached() {
             var _this3 = this;
 
-            $('.language-switch').dropdown();
-
             var me = this;
             this.ea.subscribe('dberr', function (response) {
+                _log.log.error(response);
                 _this3.error = true;
             });
         };
@@ -554,14 +538,10 @@ define('components/top-bar',['exports', 'aurelia-framework', '../services/sessio
             this.navigate('app/timesheets/planning');
         };
 
-        TopBar.prototype.switchLocale = function switchLocale(locale) {
-            this.session.switchLocale(locale);
-        };
-
         _createClass(TopBar, [{
             key: 'isAdmin',
             get: function get() {
-                return this.session.userHasRole('admin');
+                return this.session.isGranted('admin');
             }
         }, {
             key: 'isSynced',
@@ -573,7 +553,7 @@ define('components/top-bar',['exports', 'aurelia-framework', '../services/sessio
         return TopBar;
     }()) || _class);
 });
-define('components/user-app-router',['exports', 'aurelia-framework', '../services/session', 'aurelia-i18n', '../config/app-settings'], function (exports, _aureliaFramework, _session, _aureliaI18n, _appSettings) {
+define('components/user-app-router',['exports', 'aurelia-framework', 'aurelia-i18n', '../services/session', '../config/app-settings'], function (exports, _aureliaFramework, _aureliaI18n, _session, _appSettings) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -616,8 +596,6 @@ define('components/user-app-router',['exports', 'aurelia-framework', '../service
                 name: 'timesheets',
                 moduleId: 'pages/timesheets/timesheets-router',
                 nav: true,
-                title: 'nav.timesheets',
-                settings: { 'icon': 'feed' },
                 auth: true
             };
 
@@ -626,8 +604,6 @@ define('components/user-app-router',['exports', 'aurelia-framework', '../service
                 name: 'planning',
                 moduleId: 'pages/timesheets/planning-router',
                 nav: true,
-                title: 'nav.planning',
-                settings: { 'icon': 'calendar' },
                 auth: true
             };
 
@@ -636,8 +612,6 @@ define('components/user-app-router',['exports', 'aurelia-framework', '../service
                 name: 'admin-planning',
                 moduleId: 'pages/admin/admin-router',
                 nav: true,
-                title: 'nav.planning',
-                settings: { 'icon': 'percent' },
                 auth: true
             };
 
@@ -646,8 +620,6 @@ define('components/user-app-router',['exports', 'aurelia-framework', '../service
                 name: 'user',
                 moduleId: 'pages/user/user-router',
                 nav: false,
-                title: 'nav.user',
-                settings: { 'icon': 'users' },
                 auth: true
             };
 
@@ -656,8 +628,6 @@ define('components/user-app-router',['exports', 'aurelia-framework', '../service
                 name: 'user',
                 moduleId: 'pages/user/user-router',
                 nav: false,
-                title: 'nav.user',
-                settings: { 'icon': 'users' },
                 auth: true
             };
 
@@ -666,108 +636,6 @@ define('components/user-app-router',['exports', 'aurelia-framework', '../service
             config.map(routes);
 
             this.router = router;
-        };
-
-        UserAppRouter.prototype.configureFakeRouter = function configureFakeRouter(config, router) {
-
-            var announcements = {
-                route: ['announcements'],
-                name: 'announcements',
-                moduleId: 'pages/announcements/announcements-router',
-                nav: true,
-                title: 'nav.announcements',
-                settings: { 'icon': 'feed' },
-                auth: true
-            };
-
-            var organizations = {
-                route: ['organizations'],
-                name: 'organizations',
-                moduleId: 'pages/organizations/organizations-router',
-                nav: false,
-                title: 'nav.organizations',
-                settings: { 'icon': 'users' },
-                auth: true
-            };
-
-            return [].concat(announcements, organizations);
-        };
-
-        UserAppRouter.prototype.configureCommonRouter = function configureCommonRouter(config, router) {
-
-            var announcements = {
-                route: ['announcements'],
-                name: 'announcements',
-                moduleId: 'pages/announcements/announcements-router',
-                nav: true,
-                title: 'nav.announcements',
-                settings: { 'icon': 'feed' },
-                auth: true
-            };
-
-            var organizations = {
-                route: ['organizations'],
-                name: 'organizations',
-                moduleId: 'pages/organizations/organizations-router',
-                nav: false,
-                title: 'nav.organizations',
-                settings: { 'icon': 'users' },
-                auth: true
-            };
-
-            var user = {
-                route: ['user'],
-                name: 'user',
-                moduleId: 'pages/user/user-router',
-                nav: false,
-                title: 'nav.user',
-                settings: { 'icon': 'users' },
-                auth: true
-            };
-
-            return [].concat(announcements, organizations, user);
-        };
-
-        UserAppRouter.prototype.configureFORouter = function configureFORouter(config, router) {
-
-            return this.configureCommonRouter(config, router);
-        };
-
-        UserAppRouter.prototype.configureMillerRouter = function configureMillerRouter(config, router) {
-
-            var routes = this.configureCommonRouter(config, router);
-
-            var userFilters = {
-                route: ['user-filters'],
-                name: 'userFilters',
-                moduleId: 'pages/user-filters/filters-router',
-                nav: true,
-                title: 'nav.filters',
-                settings: { 'icon': 'filter' },
-                auth: true
-            };
-
-            var notifications = {
-                route: ['notifications'],
-                name: 'notifications',
-                moduleId: 'pages/notifications/notifications-router',
-                nav: true,
-                title: 'nav.notifications',
-                settings: { 'icon': 'mail outline' },
-                auth: true
-            };
-
-            return [].concat(routes, [userFilters], notifications);
-        };
-
-        UserAppRouter.prototype.configureFFORouter = function configureFFORouter(config, router) {
-
-            return this.configureFORouter(config, router);
-        };
-
-        UserAppRouter.prototype.configurePublicRouter = function configurePublicRouter(config, router) {
-
-            return this.configureFORouter(config, router);
         };
 
         return UserAppRouter;
@@ -779,10 +647,11 @@ define('config/app-settings',['exports'], function (exports) {
     Object.defineProperty(exports, "__esModule", {
         value: true
     });
+
     var settings = {
-        remoteUrls: ['http://ruelle1.mykampot.com/', 'http://ruelle2.mykampot.com/'],
+        remoteUrls: ['https://proacti.cloudant.com/'],
         default_locale: 'fr-FR',
-        debug: false,
+        debug: true,
 
         calendar_text: {
             days: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
@@ -795,29 +664,9 @@ define('config/app-settings',['exports'], function (exports) {
         }
     };
 
-    settings.debug = true;
-
     exports.default = settings;
 });
-define('config/auth-config',['exports'], function (exports) {
-    'use strict';
-
-    Object.defineProperty(exports, "__esModule", {
-        value: true
-    });
-    var config = {
-
-        loginUrl: 'https://proacti.cloudant.com/_session',
-
-        tokenName: 'token',
-
-        loginRedirect: '#/loggedIn'
-
-    };
-
-    exports.default = config;
-});
-define('services/accounting-service',['exports', 'aurelia-framework', './session', 'pouchdb', 'moment', 'aurelia-event-aggregator', 'aurelia-fetch-client', './log', './db-service', 'decimal'], function (exports, _aureliaFramework, _session, _pouchdb, _moment, _aureliaEventAggregator, _aureliaFetchClient, _log, _dbService, _decimal) {
+define('services/accounting-service',['exports', 'aurelia-framework', 'pouchdb', 'moment', 'decimal', './log', './db-service'], function (exports, _aureliaFramework, _pouchdb, _moment, _decimal, _log, _dbService) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -845,16 +694,13 @@ define('services/accounting-service',['exports', 'aurelia-framework', './session
 
     var _dec, _dec2, _class;
 
-    var AccountingService = exports.AccountingService = (_dec = (0, _aureliaFramework.inject)(_session.Session, _dbService.DBService, _aureliaFetchClient.HttpClient, _aureliaEventAggregator.EventAggregator), _dec2 = (0, _aureliaFramework.singleton)(), _dec(_class = _dec2(_class = function () {
-        function AccountingService(session, db, http, ea) {
+    var AccountingService = exports.AccountingService = (_dec = (0, _aureliaFramework.inject)(_dbService.DBService), _dec2 = (0, _aureliaFramework.singleton)(), _dec(_class = _dec2(_class = function () {
+        function AccountingService(db) {
             _classCallCheck(this, AccountingService);
 
             this.rules = new Map();
 
-            this.session = session;
             this.db = db;
-            this.http = http;
-            this.ea = ea;
         }
 
         AccountingService.prototype.retrieveRules = function retrieveRules(accountingRuleEndKey) {
@@ -961,6 +807,7 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
             this.syncHandlers = new Map();
             this.lastUpdates = new Map();
             this.lastSyncs = new Map();
+            this.liveReplicates = ['^accounting$', '^allocation$', '^interpret$', '^purpose$', '^timesheet\-{0}$'];
 
             this.session = session;
             this.sharding = sharding;
@@ -989,7 +836,7 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
 
             this.addUpdateCheckpoint(dbName);
 
-            var handler = db.sync(this.sharding.getRemoteUrl() + dbName, me.getSyncOptions()).on('change', function (change) {
+            var handler = db.sync(this.sharding.getRemoteUrl() + dbName, me.getSyncOptions(dbName)).on('change', function (change) {
 
                 me.addSyncCheckpoint(dbName);
 
@@ -1007,27 +854,48 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
             return db;
         };
 
-        DBService.prototype.getSyncOptions = function getSyncOptions() {
-            return {
-                live: true,
-                retry: true,
+        DBService.prototype.getSyncOptions = function getSyncOptions(dbName) {
+            var token = localStorage.getItem('aurelia_token');
+            var options = {
                 ajax: {
                     "headers": {
-                        "Authorization": "Basic " + localStorage.getItem('aurelia_token')
+                        "Authorization": "Basic " + token
                     }
                 }
             };
+
+            var user = atob(localStorage.getItem('aurelia_token')).split(':')[0];
+            for (var _iterator = this.liveReplicates, _isArray = Array.isArray(_iterator), _i = 0, _iterator = _isArray ? _iterator : _iterator[Symbol.iterator]();;) {
+                var _ref;
+
+                if (_isArray) {
+                    if (_i >= _iterator.length) break;
+                    _ref = _iterator[_i++];
+                } else {
+                    _i = _iterator.next();
+                    if (_i.done) break;
+                    _ref = _i.value;
+                }
+
+                var db = _ref;
+
+                if (dbName.match(new RegExp(db.replace('{0}', user)))) {
+                    options.live = true;
+                    options.retry = true;
+                    break;
+                }
+            }
+
+            return options;
         };
 
         DBService.prototype.handleSyncError = function handleSyncError(db, err) {
             if (err.status === 403 || err.status === 404) {
-
-                this.syncHandlers.get(db.name).cancel();
-                this.syncHandlers.delete(db.name);
-                db.destroy();
-                this.dbs.delete(db.name);
+                this.removeDB(db);
             } else if (err.status === 401) {
                 this.session.invalidate();
+            } else if (err.result !== undefined && err.result.status === 'cancelled') {
+                _log.log.error(err);
             } else {
                 this.ea.publish('dberr', { dbName: db.name, err: err });
             }
@@ -1046,33 +914,44 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
             }
         };
 
+        DBService.prototype.removeDB = function removeDB(db) {
+            if (this.syncHandlers.has(db.name)) {
+                this.syncHandlers.get(db.name).cancel();
+                this.syncHandlers.delete(db.name);
+            }
+            this.dbs.delete(db.name);
+            this.removeUpdateCheckpoint(db.name);
+            this.removeSyncCheckpoint(db.name);
+            return db.destroy();
+        };
+
         DBService.prototype.removeDBs = function removeDBs() {
+            var _this2 = this;
+
             var me = this;
             var promises = [];
 
             this.dbs.forEach(function (db, dbName) {
-                if (me.syncHandlers.has(dbName)) {
-                    me.syncHandlers.get(dbName).cancel();
-                    me.syncHandlers.delete(dbName);
-                }
-                me.dbs.delete(dbName);
-                promises.push(db.destroy());
+                promises.push(me.removeDB(db));
             });
 
-            window.indexedDB.webkitGetDatabaseNames().onsuccess = function (event) {
-                Array.prototype.forEach.call(event.target.result, indexedDB.deleteDatabase.bind(indexedDB));
-            };
+            return Promise.all(promises).then(function () {
+                window.indexedDB.webkitGetDatabaseNames().onsuccess = function (event) {
+                    Array.prototype.forEach.call(event.target.result, indexedDB.deleteDatabase.bind(indexedDB));
+                };
 
-            localStorage.removeItem('last-updates');
-            localStorage.removeItem('last-syncs');
-            this.lastUpdates.clear();
-            this.lastSyncs.clear();
-
-            return Promise.all(promises);
+                localStorage.removeItem('last-updates');
+                localStorage.removeItem('last-syncs');
+                _this2.lastUpdates.clear();
+                _this2.lastSyncs.clear();
+                return new Promise(function (resolve) {
+                    return resolve();
+                });
+            });
         };
 
         DBService.prototype.listUsers = function listUsers() {
-            var _this2 = this;
+            var _this3 = this;
 
             if (!this.dbs.has('staff')) {
                 var _db = new _pouchdb2.default('staff', { skip_setup: true });
@@ -1102,7 +981,7 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
                         }
                     };
 
-                    return _this2.createOrReplaceLocalUser(localUser);
+                    return _this3.createOrReplaceLocalUser(localUser);
                 }));
             }).then(function (filteredUsers) {
                 return filteredUsers;
@@ -1253,24 +1132,33 @@ define('services/db-service',['exports', 'aurelia-framework', './session', 'pouc
         };
 
         DBService.prototype.addUpdateCheckpoint = function addUpdateCheckpoint(dbName) {
-
             this.lastUpdates.set(dbName, Date.now());
 
-            var storage = [];
-            this.lastUpdates.forEach(function (value, key) {
-                return storage = [].concat(storage, [[key, value]]);
-            });
-            localStorage.setItem('last-updates', JSON.stringify(storage));
+            this.persistMap(this.lastUpdates, 'last-updates');
         };
 
         DBService.prototype.addSyncCheckpoint = function addSyncCheckpoint(dbName) {
             this.lastSyncs.set(dbName, Date.now());
 
+            this.persistMap(this.lastSyncs, 'last-syncs');
+        };
+
+        DBService.prototype.removeUpdateCheckpoint = function removeUpdateCheckpoint(dbName) {
+            this.lastUpdates.delete(dbName);
+            this.persistMap(this.lastUpdates, 'last-updates');
+        };
+
+        DBService.prototype.removeSyncCheckpoint = function removeSyncCheckpoint(dbName) {
+            this.lastSyncs.delete(dbName);
+            this.persistMap(this.lastSyncs, 'last-syncs');
+        };
+
+        DBService.prototype.persistMap = function persistMap(map, name) {
             var storage = [];
-            this.lastSyncs.forEach(function (value, key) {
+            map.forEach(function (value, key) {
                 return storage = [].concat(storage, [[key, value]]);
             });
-            localStorage.setItem('last-syncs', JSON.stringify(storage));
+            localStorage.setItem(name, JSON.stringify(storage));
         };
 
         DBService.prototype.restoreCheckpoints = function restoreCheckpoints() {
@@ -1458,7 +1346,7 @@ define('services/route-loader',['exports', 'aurelia-framework', 'aurelia-fetch-c
         return RouteLoader;
     }()) || _class) || _class);
 });
-define('services/session',['exports', 'aurelia-framework', './route-loader', 'aurelia-router', 'aurelia-auth', 'aurelia-i18n', '../config/app-settings', 'aurelia-fetch-client', 'pouchdb', './log', './sharding-service'], function (exports, _aureliaFramework, _routeLoader, _aureliaRouter, _aureliaAuth, _aureliaI18n, _appSettings, _aureliaFetchClient, _pouchdb, _log, _shardingService) {
+define('services/session',['exports', 'aurelia-framework', 'aurelia-router', 'aurelia-auth', 'aurelia-i18n', 'pouchdb', '../config/app-settings', './log', './sharding-service'], function (exports, _aureliaFramework, _aureliaRouter, _aureliaAuth, _aureliaI18n, _pouchdb, _appSettings, _log, _shardingService) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -1466,9 +1354,9 @@ define('services/session',['exports', 'aurelia-framework', './route-loader', 'au
     });
     exports.Session = undefined;
 
-    var _appSettings2 = _interopRequireDefault(_appSettings);
-
     var _pouchdb2 = _interopRequireDefault(_pouchdb);
+
+    var _appSettings2 = _interopRequireDefault(_appSettings);
 
     function _interopRequireDefault(obj) {
         return obj && obj.__esModule ? obj : {
@@ -1484,24 +1372,20 @@ define('services/session',['exports', 'aurelia-framework', './route-loader', 'au
 
     var _dec, _dec2, _class;
 
-    var Session = exports.Session = (_dec = (0, _aureliaFramework.singleton)(), _dec2 = (0, _aureliaFramework.inject)(_routeLoader.RouteLoader, _aureliaRouter.Router, _aureliaAuth.AuthService, _shardingService.ShardingService, _aureliaI18n.I18N, _aureliaFetchClient.HttpClient), _dec(_class = _dec2(_class = function () {
-        function Session(loader, router, auth, sharding, i18n, http) {
+    var Session = exports.Session = (_dec = (0, _aureliaFramework.singleton)(), _dec2 = (0, _aureliaFramework.inject)(_aureliaRouter.Router, _aureliaAuth.AuthService, _shardingService.ShardingService, _aureliaI18n.I18N), _dec(_class = _dec2(_class = function () {
+        function Session(router, auth, sharding, i18n) {
             _classCallCheck(this, Session);
 
-            this.loader = loader;
             this.router = router;
             this.auth = auth;
             this.sharding = sharding;
             this.i18n = i18n;
-            this.http = http;
 
             this.loadFromStorage();
             this.locale = this.getLocale();
             this.i18n.setLocale(this.locale);
 
             this.started = false;
-
-            this.setBaseUrl();
         }
 
         Session.prototype.start = function start() {
@@ -1510,14 +1394,12 @@ define('services/session',['exports', 'aurelia-framework', './route-loader', 'au
             return this.loadUserFromBackend().then(function () {
 
                 me.started = true;
-                return true;
+                return new Promise(function (resolve) {
+                    resolve();
+                });
             }).catch(function (err) {
-                console.log(err);
+                _log.log.error(err);
             });
-        };
-
-        Session.prototype.setBaseUrl = function setBaseUrl() {
-            _appSettings2.default.baseUrl = _appSettings2.default.rootUrl + _appSettings2.default.envUrlPrefix + '/' + this.locale + '/' + 'api/';
         };
 
         Session.prototype.isStarted = function isStarted() {
@@ -1548,10 +1430,6 @@ define('services/session',['exports', 'aurelia-framework', './route-loader', 'au
 
         Session.prototype.getUser = function getUser() {
             return this.user;
-        };
-
-        Session.prototype.userHasRole = function userHasRole(role) {
-            return this.user !== undefined && this.user !== null && this.user.roles.includes(role);
         };
 
         Session.prototype.loadUserFromBackend = function loadUserFromBackend() {
@@ -1611,12 +1489,8 @@ define('services/session',['exports', 'aurelia-framework', './route-loader', 'au
             this.locale = locale;
             this.setBaseUrl();
             this.i18n.setLocale(this.locale);
-            this.http.configure(function (config) {
-                config.withBaseUrl(_appSettings2.default.baseUrl);
-            });
-            this.persistToStorage();
 
-            this.loader.invalidateCache();
+            this.persistToStorage();
 
             this.router.navigate(this.router.history.fragment, { replace: true });
         };
@@ -1634,6 +1508,58 @@ define('services/session',['exports', 'aurelia-framework', './route-loader', 'au
 
         return Session;
     }()) || _class) || _class);
+});
+define('services/sharding-service',['exports', 'aurelia-framework', '../config/app-settings'], function (exports, _aureliaFramework, _appSettings) {
+    'use strict';
+
+    Object.defineProperty(exports, "__esModule", {
+        value: true
+    });
+    exports.ShardingService = undefined;
+
+    var _appSettings2 = _interopRequireDefault(_appSettings);
+
+    function _interopRequireDefault(obj) {
+        return obj && obj.__esModule ? obj : {
+            default: obj
+        };
+    }
+
+    function _classCallCheck(instance, Constructor) {
+        if (!(instance instanceof Constructor)) {
+            throw new TypeError("Cannot call a class as a function");
+        }
+    }
+
+    var _dec, _class;
+
+    var MAX_CONNECTIONS = 6;
+
+    var ShardingService = exports.ShardingService = (_dec = (0, _aureliaFramework.singleton)(false), _dec(_class = function () {
+        function ShardingService() {
+            _classCallCheck(this, ShardingService);
+
+            this.curIndex = 0;
+            this.curConnections = 0;
+        }
+
+        ShardingService.prototype.getRemoteUrl = function getRemoteUrl() {
+
+            if (this.curConnections >= MAX_CONNECTIONS) {
+                this.curConnections = 0;
+                this.curIndex++;
+            }
+
+            if (this.curIndex === _appSettings2.default.remoteUrls.length) {
+                this.curIndex = 0;
+            }
+
+            this.curConnections++;
+            return _appSettings2.default.remoteUrls[this.curIndex];
+        };
+
+        return ShardingService;
+    }()) || _class);
 });
 define('lib/form/semantic-form-validation-renderer',['exports', 'aurelia-dependency-injection', 'aurelia-validation'], function (exports, _aureliaDependencyInjection, _aureliaValidation) {
     'use strict';
@@ -1902,7 +1828,7 @@ define('pages/admin/admin-report',['exports', 'aurelia-framework'], function (ex
         initializer: null
     })), _class);
 });
-define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-event-aggregator', './admin-router', '../../services/session', '../../services/db-service', '../../services/accounting-service', '../../config/app-settings', 'moment', 'aurelia-i18n', 'decimal', '../../services/log'], function (exports, _aureliaFramework, _aureliaEventAggregator, _adminRouter, _session, _dbService, _accountingService, _appSettings, _moment, _aureliaI18n, _decimal, _log) {
+define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-event-aggregator', '../../services/accounting-service', 'moment', 'aurelia-i18n', 'decimal', './admin-router', '../../services/db-service', '../../config/app-settings', '../../services/log'], function (exports, _aureliaFramework, _aureliaEventAggregator, _accountingService, _moment, _aureliaI18n, _decimal, _adminRouter, _dbService, _appSettings, _log) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -1910,11 +1836,11 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
     });
     exports.AdminReports = undefined;
 
-    var _appSettings2 = _interopRequireDefault(_appSettings);
-
     var _moment2 = _interopRequireDefault(_moment);
 
     var _decimal2 = _interopRequireDefault(_decimal);
+
+    var _appSettings2 = _interopRequireDefault(_appSettings);
 
     function _interopRequireDefault(obj) {
         return obj && obj.__esModule ? obj : {
@@ -1979,8 +1905,8 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
 
     var _dec, _class, _desc, _value, _class2, _descriptor;
 
-    var AdminReports = exports.AdminReports = (_dec = (0, _aureliaFramework.inject)(_session.Session, _dbService.DBService, _accountingService.AccountingService, _aureliaI18n.I18N, _aureliaEventAggregator.EventAggregator, _aureliaFramework.TaskQueue, _adminRouter.AdminRouter), _dec(_class = (_class2 = function () {
-        function AdminReports(session, db, accounting, i18n, ea, taskQueue, router) {
+    var AdminReports = exports.AdminReports = (_dec = (0, _aureliaFramework.inject)(_dbService.DBService, _accountingService.AccountingService, _aureliaI18n.I18N, _aureliaEventAggregator.EventAggregator, _aureliaFramework.TaskQueue), _dec(_class = (_class2 = function () {
+        function AdminReports(db, accounting, i18n, ea, taskQueue) {
             _classCallCheck(this, AdminReports);
 
             _initDefineProp(this, 'month', _descriptor, this);
@@ -1991,16 +1917,15 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
             this.allocationReports = [];
             this.showMonthAggregate = false;
 
-            this.session = session;
             this.db = db;
             this.accounting = accounting;
             this.i18n = i18n;
             this.ea = ea;
-            this.router = router;
             this.taskQueue = taskQueue;
         }
 
         AdminReports.prototype.attached = function attached() {
+
             var me = this;
             $('#showMonthAggregate').checkbox({
                 onChange: function onChange() {
@@ -2010,11 +1935,20 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
 
             this.loadReports();
 
-            this.ea.subscribe('dbsync', function (response) {
+            this.subscriber = this.ea.subscribe('dbsync', function (response) {
                 if (response.dbName.match(/^timesheet\-/)) {
-                    me.loadReports();
+                    me.retrieveAllocationReports().then(function () {
+                        me.taskQueue.queueMicroTask(function () {
+                            me.generateUsersExportLinks();
+                            me.aggregateReports();
+                        });
+                    });
                 }
             });
+        };
+
+        AdminReports.prototype.detached = function detached() {
+            this.subscriber.dispose();
         };
 
         AdminReports.prototype.refresh = function refresh() {
@@ -2037,13 +1971,13 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
             var _this = this;
 
             this.retrieveUsers().then(function () {
-                _this.retrieveAllocations().then(function () {
-                    _this.retrieveAllocationReports().then(function () {
-                        _this.taskQueue.queueMicroTask(function () {
-                            _this.generateUsersExportLinks();
-                            _this.aggregateReports();
-                        });
-                    });
+                return _this.retrieveAllocations();
+            }).then(function () {
+                return _this.retrieveAllocationReports();
+            }).then(function () {
+                _this.taskQueue.queueMicroTask(function () {
+                    _this.generateUsersExportLinks();
+                    _this.aggregateReports();
                 });
             });
         };
@@ -2285,7 +2219,7 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
         initializer: null
     })), _class2)) || _class);
 });
-define('pages/admin/admin-router',['exports', 'aurelia-framework', 'aurelia-fetch-client', 'aurelia-router'], function (exports, _aureliaFramework, _aureliaFetchClient, _aureliaRouter) {
+define('pages/admin/admin-router',['exports', 'aurelia-framework', 'aurelia-router'], function (exports, _aureliaFramework, _aureliaRouter) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -2334,7 +2268,7 @@ define('pages/admin/admin-router',['exports', 'aurelia-framework', 'aurelia-fetc
         return AdminRouter;
     }()) || _class);
 });
-define('pages/admin/planning',['exports', 'aurelia-framework', 'aurelia-fetch-client', 'aurelia-event-aggregator', './admin-router', '../../services/session', '../../services/db-service', '../../config/app-settings', 'moment', 'aurelia-i18n'], function (exports, _aureliaFramework, _aureliaFetchClient, _aureliaEventAggregator, _adminRouter, _session, _dbService, _appSettings, _moment, _aureliaI18n) {
+define('pages/admin/planning',['exports', 'aurelia-framework', 'moment', 'aurelia-i18n', './admin-router', '../../config/app-settings'], function (exports, _aureliaFramework, _moment, _aureliaI18n, _adminRouter, _appSettings) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -2342,9 +2276,9 @@ define('pages/admin/planning',['exports', 'aurelia-framework', 'aurelia-fetch-cl
     });
     exports.Planning = undefined;
 
-    var _appSettings2 = _interopRequireDefault(_appSettings);
-
     var _moment2 = _interopRequireDefault(_moment);
+
+    var _appSettings2 = _interopRequireDefault(_appSettings);
 
     function _interopRequireDefault(obj) {
         return obj && obj.__esModule ? obj : {
@@ -2360,14 +2294,11 @@ define('pages/admin/planning',['exports', 'aurelia-framework', 'aurelia-fetch-cl
 
     var _dec, _class;
 
-    var Planning = exports.Planning = (_dec = (0, _aureliaFramework.inject)(Element, _session.Session, _dbService.DBService, _aureliaI18n.I18N, _adminRouter.AdminRouter), _dec(_class = function () {
-        function Planning(element, session, db, i18n, router) {
+    var Planning = exports.Planning = (_dec = (0, _aureliaFramework.inject)(Element, _adminRouter.AdminRouter), _dec(_class = function () {
+        function Planning(element, router) {
             _classCallCheck(this, Planning);
 
             this.element = element;
-            this.session = session;
-            this.db = db;
-            this.i18n = i18n;
             this.router = router;
         }
 
@@ -2387,17 +2318,13 @@ define('pages/admin/planning',['exports', 'aurelia-framework', 'aurelia-fetch-cl
         return Planning;
     }()) || _class);
 });
-define('pages/admin/user-timesheet',['exports', 'aurelia-framework', 'aurelia-event-aggregator', './admin-router', '../../services/session', '../../services/db-service', '../../config/app-settings', 'moment', 'aurelia-i18n', 'aurelia-validation', 'decimal'], function (exports, _aureliaFramework, _aureliaEventAggregator, _adminRouter, _session, _dbService, _appSettings, _moment, _aureliaI18n, _aureliaValidation, _decimal) {
+define('pages/admin/user-timesheet',['exports', 'aurelia-framework', 'aurelia-i18n', 'aurelia-validation', 'decimal', './admin-router', '../../services/db-service'], function (exports, _aureliaFramework, _aureliaI18n, _aureliaValidation, _decimal, _adminRouter, _dbService) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
         value: true
     });
     exports.UserTimesheet = undefined;
-
-    var _appSettings2 = _interopRequireDefault(_appSettings);
-
-    var _moment2 = _interopRequireDefault(_moment);
 
     var _decimal2 = _interopRequireDefault(_decimal);
 
@@ -2458,8 +2385,8 @@ define('pages/admin/user-timesheet',['exports', 'aurelia-framework', 'aurelia-ev
 
     var _dec, _class, _desc, _value, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5;
 
-    var UserTimesheet = exports.UserTimesheet = (_dec = (0, _aureliaFramework.inject)(Element, _session.Session, _dbService.DBService, _aureliaI18n.I18N, _aureliaEventAggregator.EventAggregator, _aureliaFramework.BindingEngine, _aureliaFramework.NewInstance.of(_aureliaValidation.ValidationController), _adminRouter.AdminRouter), _dec(_class = (_class2 = function () {
-        function UserTimesheet(element, session, db, i18n, ea, bindingEngine, controller, router) {
+    var UserTimesheet = exports.UserTimesheet = (_dec = (0, _aureliaFramework.inject)(_dbService.DBService, _aureliaI18n.I18N, _aureliaFramework.NewInstance.of(_aureliaValidation.ValidationController), _adminRouter.AdminRouter), _dec(_class = (_class2 = function () {
+        function UserTimesheet(db, i18n, controller, router) {
             _classCallCheck(this, UserTimesheet);
 
             _initDefineProp(this, 'timesheet', _descriptor, this);
@@ -2472,12 +2399,8 @@ define('pages/admin/user-timesheet',['exports', 'aurelia-framework', 'aurelia-ev
 
             _initDefineProp(this, 'accountingRules', _descriptor5, this);
 
-            this.element = element;
-            this.session = session;
             this.db = db;
             this.i18n = i18n;
-            this.ea = ea;
-            this.bindingEngine = bindingEngine;
             this.controller = controller;
             this.router = router;
         }
@@ -2489,7 +2412,7 @@ define('pages/admin/user-timesheet',['exports', 'aurelia-framework', 'aurelia-ev
                 $('.' + this.userName + ' .precarite.checkbox').checkbox('set checked');
             }
 
-            _aureliaValidation.ValidationRules.ensure('salary').required().matches(/^[\d]+[\.|]?[\d]*$/).withMessage(this.i18n.tr('error_number')).ensure('charges').required().matches(/^[\d]+[\.|]?[\d]*$/).withMessage(this.i18n.tr('error_number')).on(this.timesheet);
+            _aureliaValidation.ValidationRules.ensure('salary').required().matches(/^[\d]+[\.|]?[\d]*$/).withMessage(this.i18n.tr('error_number')).on(this.timesheet);
         };
 
         UserTimesheet.prototype.allocationSelected = function allocationSelected(dropdown) {
@@ -2513,7 +2436,6 @@ define('pages/admin/user-timesheet',['exports', 'aurelia-framework', 'aurelia-ev
         };
 
         UserTimesheet.prototype.calculateRatios = function calculateRatios() {
-
             var totalHours = 0;
             this.timesheet.entries.forEach(function (entry) {
                 return totalHours += entry.duration;
@@ -2568,7 +2490,7 @@ define('pages/admin/user-timesheet',['exports', 'aurelia-framework', 'aurelia-ev
         initializer: null
     })), _class2)) || _class);
 });
-define('pages/admin/users-timesheets',['exports', 'aurelia-framework', 'aurelia-event-aggregator', './admin-router', '../../services/session', '../../services/db-service', '../../config/app-settings', 'moment', 'aurelia-i18n', '../../services/log'], function (exports, _aureliaFramework, _aureliaEventAggregator, _adminRouter, _session, _dbService, _appSettings, _moment, _aureliaI18n, _log) {
+define('pages/admin/users-timesheets',['exports', 'aurelia-framework', 'aurelia-event-aggregator', '../../services/db-service', '../../config/app-settings', 'moment', '../../services/log'], function (exports, _aureliaFramework, _aureliaEventAggregator, _dbService, _appSettings, _moment, _log) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -2637,8 +2559,8 @@ define('pages/admin/users-timesheets',['exports', 'aurelia-framework', 'aurelia-
 
     var _dec, _class, _desc, _value, _class2, _descriptor;
 
-    var UsersTimesheets = exports.UsersTimesheets = (_dec = (0, _aureliaFramework.inject)(Element, _session.Session, _dbService.DBService, _aureliaI18n.I18N, _aureliaEventAggregator.EventAggregator, _aureliaFramework.BindingEngine, _adminRouter.AdminRouter), _dec(_class = (_class2 = function () {
-        function UsersTimesheets(element, session, db, i18n, ea, bindingEngine, router) {
+    var UsersTimesheets = exports.UsersTimesheets = (_dec = (0, _aureliaFramework.inject)(_dbService.DBService, _aureliaEventAggregator.EventAggregator), _dec(_class = (_class2 = function () {
+        function UsersTimesheets(db, ea) {
             _classCallCheck(this, UsersTimesheets);
 
             _initDefineProp(this, 'month', _descriptor, this);
@@ -2648,13 +2570,8 @@ define('pages/admin/users-timesheets',['exports', 'aurelia-framework', 'aurelia-
             this.purposes = new Map();
             this.unallocatedOnly = true;
 
-            this.element = element;
-            this.session = session;
             this.db = db;
-            this.i18n = i18n;
             this.ea = ea;
-            this.bindingEngine = bindingEngine;
-            this.router = router;
         }
 
         UsersTimesheets.prototype.attached = function attached() {
@@ -2668,20 +2585,24 @@ define('pages/admin/users-timesheets',['exports', 'aurelia-framework', 'aurelia-
 
             this.retrieveData();
 
-            this.ea.subscribe('dbsync', function (response) {
+            this.subscriber = this.ea.subscribe('dbsync', function (response) {
                 if (response.dbName.match(/^timesheet\-/)) {
                     me.retrieveTimesheets();
                 }
             });
         };
 
+        UsersTimesheets.prototype.detached = function detached() {
+            this.subscriber.dispose();
+        };
+
         UsersTimesheets.prototype.retrieveData = function retrieveData() {
             var _this = this;
 
             this.retrieveUsers().then(function () {
-                _this.retrievePurposes().then(function () {
-                    _this.retrieveTimesheets();
-                });
+                return _this.retrievePurposes();
+            }).then(function () {
+                return _this.retrieveTimesheets();
             });
         };
 
@@ -2689,7 +2610,7 @@ define('pages/admin/users-timesheets',['exports', 'aurelia-framework', 'aurelia-
             var me = this;
 
             return this.db.listUsers().then(function (response) {
-                response.forEach(function (user) {
+                response.map(function (user) {
                     me.users.set(user.doc.name, user);
                 });
                 return new Promise(function (resolve) {
@@ -2701,13 +2622,9 @@ define('pages/admin/users-timesheets',['exports', 'aurelia-framework', 'aurelia-
         UsersTimesheets.prototype.retrievePurposes = function retrievePurposes() {
             var me = this;
             return this.db.list('purpose').then(function (response) {
-
-                if (response) {
-
-                    response.forEach(function (purpose) {
-                        me.purposes.set(purpose.id, purpose.doc.name);
-                    });
-                }
+                response.map(function (purpose) {
+                    me.purposes.set(purpose.id, purpose.doc.name);
+                });
 
                 return new Promise(function (resolve) {
                     resolve();
@@ -2734,7 +2651,7 @@ define('pages/admin/users-timesheets',['exports', 'aurelia-framework', 'aurelia-
         initializer: null
     })), _class2)) || _class);
 });
-define('pages/timesheets/monthly-timesheet',['exports', 'aurelia-framework', 'aurelia-fetch-client', 'aurelia-event-aggregator', './timesheets-router', '../../services/session', '../../services/db-service', '../../config/app-settings', 'moment', 'aurelia-i18n'], function (exports, _aureliaFramework, _aureliaFetchClient, _aureliaEventAggregator, _timesheetsRouter, _session, _dbService, _appSettings, _moment, _aureliaI18n) {
+define('pages/timesheets/monthly-timesheet',['exports', 'aurelia-framework', 'aurelia-event-aggregator', './timesheets-router', '../../services/session', '../../services/db-service', '../../config/app-settings', 'moment'], function (exports, _aureliaFramework, _aureliaEventAggregator, _timesheetsRouter, _session, _dbService, _appSettings, _moment) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -2803,8 +2720,8 @@ define('pages/timesheets/monthly-timesheet',['exports', 'aurelia-framework', 'au
 
     var _dec, _class, _desc, _value, _class2, _descriptor;
 
-    var MonthlyTimesheet = exports.MonthlyTimesheet = (_dec = (0, _aureliaFramework.inject)(Element, _session.Session, _dbService.DBService, _aureliaI18n.I18N, _aureliaEventAggregator.EventAggregator, _timesheetsRouter.TimesheetsRouter), _dec(_class = (_class2 = function () {
-        function MonthlyTimesheet(element, session, db, i18n, ea, router) {
+    var MonthlyTimesheet = exports.MonthlyTimesheet = (_dec = (0, _aureliaFramework.inject)(_session.Session, _dbService.DBService, _aureliaEventAggregator.EventAggregator, _timesheetsRouter.TimesheetsRouter), _dec(_class = (_class2 = function () {
+        function MonthlyTimesheet(session, db, ea, router) {
             _classCallCheck(this, MonthlyTimesheet);
 
             _initDefineProp(this, 'entity', _descriptor, this);
@@ -2812,39 +2729,44 @@ define('pages/timesheets/monthly-timesheet',['exports', 'aurelia-framework', 'au
             this.purposes = new Map();
             this.interprets = new Map();
 
-            this.element = element;
             this.session = session;
             this.db = db;
-            this.i18n = i18n;
             this.ea = ea;
             this.router = router;
         }
 
         MonthlyTimesheet.prototype.activate = function activate(params) {
-
             this.timesheetId = params.id;
+        };
 
+        MonthlyTimesheet.prototype.attached = function attached() {
             this.retrieveData();
 
-            this.ea.subscribe('dbsync', function (response) {
+            this.subscriber = this.ea.subscribe('dbsync', function (response) {
                 me.retrieveData();
             });
         };
 
+        MonthlyTimesheet.prototype.detached = function detached() {
+            this.subscriber.dispose();
+        };
+
         MonthlyTimesheet.prototype.retrieveData = function retrieveData() {
-            this.listPurposes().then(this.listInterprets().then(this.getTimesheet()));
+            var _this = this;
+
+            this.listPurposes().then(function () {
+                return _this.listInterprets();
+            }).then(function () {
+                return _this.getTimesheet();
+            });
         };
 
         MonthlyTimesheet.prototype.listPurposes = function listPurposes() {
             var me = this;
             return this.db.list('purpose').then(function (response) {
-
-                if (response) {
-
-                    response.forEach(function (purpose) {
-                        me.purposes.set(purpose.id, purpose.doc.name);
-                    });
-                }
+                response.map(function (purpose) {
+                    me.purposes.set(purpose.id, purpose.doc.name);
+                });
 
                 return new Promise(function (resolve) {
                     resolve();
@@ -2856,12 +2778,9 @@ define('pages/timesheets/monthly-timesheet',['exports', 'aurelia-framework', 'au
             var me = this;
             return this.db.list('interpret').then(function (response) {
 
-                if (response) {
-
-                    response.forEach(function (interpret) {
-                        me.interprets.set(interpret.id, interpret.doc.name);
-                    });
-                }
+                response.map(function (interpret) {
+                    me.interprets.set(interpret.id, interpret.doc.name);
+                });
 
                 return new Promise(function (resolve) {
                     resolve();
@@ -2892,7 +2811,7 @@ define('pages/timesheets/monthly-timesheet',['exports', 'aurelia-framework', 'au
         }
     })), _class2)) || _class);
 });
-define('pages/timesheets/planning-router',['exports', 'aurelia-framework', 'aurelia-fetch-client'], function (exports, _aureliaFramework, _aureliaFetchClient) {
+define('pages/timesheets/planning-router',['exports', 'aurelia-framework'], function (exports, _aureliaFramework) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -2906,9 +2825,7 @@ define('pages/timesheets/planning-router',['exports', 'aurelia-framework', 'aure
         }
     }
 
-    var _dec, _class;
-
-    var PlanningRouter = exports.PlanningRouter = (_dec = (0, _aureliaFramework.inject)(_aureliaFetchClient.HttpClient), _dec(_class = function () {
+    var PlanningRouter = exports.PlanningRouter = function () {
         function PlanningRouter() {
             _classCallCheck(this, PlanningRouter);
         }
@@ -2931,9 +2848,9 @@ define('pages/timesheets/planning-router',['exports', 'aurelia-framework', 'aure
         };
 
         return PlanningRouter;
-    }()) || _class);
+    }();
 });
-define('pages/timesheets/planning',['exports', 'aurelia-framework', 'aurelia-fetch-client', 'aurelia-event-aggregator', './timesheets-router', '../../services/session', '../../services/db-service', '../../config/app-settings', 'moment', 'aurelia-i18n'], function (exports, _aureliaFramework, _aureliaFetchClient, _aureliaEventAggregator, _timesheetsRouter, _session, _dbService, _appSettings, _moment, _aureliaI18n) {
+define('pages/timesheets/planning',['exports', 'aurelia-framework', 'moment', './timesheets-router', '../../config/app-settings'], function (exports, _aureliaFramework, _moment, _timesheetsRouter, _appSettings) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -2941,9 +2858,9 @@ define('pages/timesheets/planning',['exports', 'aurelia-framework', 'aurelia-fet
     });
     exports.Planning = undefined;
 
-    var _appSettings2 = _interopRequireDefault(_appSettings);
-
     var _moment2 = _interopRequireDefault(_moment);
+
+    var _appSettings2 = _interopRequireDefault(_appSettings);
 
     function _interopRequireDefault(obj) {
         return obj && obj.__esModule ? obj : {
@@ -2959,14 +2876,11 @@ define('pages/timesheets/planning',['exports', 'aurelia-framework', 'aurelia-fet
 
     var _dec, _class;
 
-    var Planning = exports.Planning = (_dec = (0, _aureliaFramework.inject)(Element, _session.Session, _dbService.DBService, _aureliaI18n.I18N, _timesheetsRouter.TimesheetsRouter), _dec(_class = function () {
-        function Planning(element, session, db, i18n, router) {
+    var Planning = exports.Planning = (_dec = (0, _aureliaFramework.inject)(Element, _timesheetsRouter.TimesheetsRouter), _dec(_class = function () {
+        function Planning(element, router) {
             _classCallCheck(this, Planning);
 
             this.element = element;
-            this.session = session;
-            this.db = db;
-            this.i18n = i18n;
             this.router = router;
         }
 
@@ -2986,7 +2900,7 @@ define('pages/timesheets/planning',['exports', 'aurelia-framework', 'aurelia-fet
         return Planning;
     }()) || _class);
 });
-define('pages/timesheets/timesheet-entry',['exports', 'aurelia-framework', 'aurelia-fetch-client', 'aurelia-event-aggregator', './timesheets-router', '../../services/session', '../../services/db-service', '../../config/app-settings', 'aurelia-validation', 'moment', 'aurelia-i18n', '../../resources/flash/flash-success-message'], function (exports, _aureliaFramework, _aureliaFetchClient, _aureliaEventAggregator, _timesheetsRouter, _session, _dbService, _appSettings, _aureliaValidation, _moment, _aureliaI18n, _flashSuccessMessage) {
+define('pages/timesheets/timesheet-entry',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'aurelia-validation', 'moment', 'aurelia-i18n', '../../resources/flash/flash-success-message', '../../config/app-settings', './timesheets-router', '../../services/session', '../../services/db-service'], function (exports, _aureliaFramework, _aureliaEventAggregator, _aureliaValidation, _moment, _aureliaI18n, _flashSuccessMessage, _appSettings, _timesheetsRouter, _session, _dbService) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -2994,9 +2908,9 @@ define('pages/timesheets/timesheet-entry',['exports', 'aurelia-framework', 'aure
     });
     exports.TimesheetEntry = undefined;
 
-    var _appSettings2 = _interopRequireDefault(_appSettings);
-
     var _moment2 = _interopRequireDefault(_moment);
+
+    var _appSettings2 = _interopRequireDefault(_appSettings);
 
     function _interopRequireDefault(obj) {
         return obj && obj.__esModule ? obj : {
@@ -3159,8 +3073,7 @@ define('pages/timesheets/timesheet-entry',['exports', 'aurelia-framework', 'aure
             var me = this;
 
             return this.db.get('timesheet-' + this.session.getUser().name, timesheetId).then(function (response) {
-
-                response.entries.forEach(function (entry) {
+                response.map(function (entry) {
                     if (entry.id === entryId) {
                         me.entity = entry;
                     }
@@ -3262,7 +3175,7 @@ define('pages/timesheets/timesheet-entry',['exports', 'aurelia-framework', 'aure
         initializer: null
     })), _class2)) || _class);
 });
-define('pages/timesheets/timesheets-router',['exports', 'aurelia-framework', 'aurelia-fetch-client', 'aurelia-router'], function (exports, _aureliaFramework, _aureliaFetchClient, _aureliaRouter) {
+define('pages/timesheets/timesheets-router',['exports', 'aurelia-framework', 'aurelia-router'], function (exports, _aureliaFramework, _aureliaRouter) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -3318,23 +3231,13 @@ define('pages/timesheets/timesheets-router',['exports', 'aurelia-framework', 'au
         return TimesheetsRouter;
     }()) || _class);
 });
-define('pages/timesheets/timesheets',['exports', 'aurelia-framework', 'aurelia-fetch-client', 'aurelia-event-aggregator', 'aurelia-validation', './timesheets-router', '../../services/session', '../../services/db-service', '../../config/app-settings', 'moment', '../../resources/flash/flash-success-message', 'aurelia-i18n', '../../services/log'], function (exports, _aureliaFramework, _aureliaFetchClient, _aureliaEventAggregator, _aureliaValidation, _timesheetsRouter, _session, _dbService, _appSettings, _moment, _flashSuccessMessage, _aureliaI18n, _log) {
+define('pages/timesheets/timesheets',['exports', 'aurelia-framework', 'aurelia-event-aggregator', '../../services/session', '../../services/db-service', '../../services/log'], function (exports, _aureliaFramework, _aureliaEventAggregator, _session, _dbService, _log) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
         value: true
     });
     exports.Timesheets = undefined;
-
-    var _appSettings2 = _interopRequireDefault(_appSettings);
-
-    var _moment2 = _interopRequireDefault(_moment);
-
-    function _interopRequireDefault(obj) {
-        return obj && obj.__esModule ? obj : {
-            default: obj
-        };
-    }
 
     function _classCallCheck(instance, Constructor) {
         if (!(instance instanceof Constructor)) {
@@ -3344,8 +3247,8 @@ define('pages/timesheets/timesheets',['exports', 'aurelia-framework', 'aurelia-f
 
     var _dec, _class;
 
-    var Timesheets = exports.Timesheets = (_dec = (0, _aureliaFramework.inject)(_session.Session, _dbService.DBService, _aureliaEventAggregator.EventAggregator, _aureliaI18n.I18N), _dec(_class = function () {
-        function Timesheets(session, db, ea, i18n) {
+    var Timesheets = exports.Timesheets = (_dec = (0, _aureliaFramework.inject)(_session.Session, _dbService.DBService, _aureliaEventAggregator.EventAggregator), _dec(_class = function () {
+        function Timesheets(session, db, ea) {
             _classCallCheck(this, Timesheets);
 
             this.purposes = new Map();
@@ -3358,24 +3261,13 @@ define('pages/timesheets/timesheets',['exports', 'aurelia-framework', 'aurelia-f
             this.session = session;
             this.db = db;
             this.ea = ea;
-            this.i18n = i18n;
         }
-
-        Timesheets.prototype.activate = function activate(params) {
-            var me = this;
-
-            this.retrieveData();
-
-            this.ea.subscribe('dbsync', function (response) {
-                me.retrieveData();
-            });
-        };
 
         Timesheets.prototype.retrieveData = function retrieveData() {
             var _this = this;
 
-            this.listPurposes().then(function (response) {
-                _this.getLastTimesheet();
+            this.listPurposes().then(function () {
+                return _this.getLastTimesheet();
             });
         };
 
@@ -3383,12 +3275,9 @@ define('pages/timesheets/timesheets',['exports', 'aurelia-framework', 'aurelia-f
             var me = this;
             return this.db.list('purpose').then(function (response) {
 
-                if (response) {
-
-                    response.forEach(function (purpose) {
-                        me.purposes.set(purpose.id, purpose.doc.name);
-                    });
-                }
+                response.map(function (purpose) {
+                    me.purposes.set(purpose.id, purpose.doc.name);
+                });
 
                 return new Promise(function (resolve) {
                     resolve();
@@ -3421,29 +3310,26 @@ define('pages/timesheets/timesheets',['exports', 'aurelia-framework', 'aurelia-f
             $('.ui.accordion').accordion({
                 exclusive: true
             });
+
+            this.retrieveData();
+
+            this.subscriber = this.ea.subscribe('dbsync', function (response) {
+                me.retrieveData();
+            });
+        };
+
+        Timesheets.prototype.detached = function detached() {
+            this.subscriber.dispose();
         };
 
         Timesheets.prototype.saveEntry = function saveEntry(entry) {
             this.getLastTimesheet();
         };
 
-        Timesheets.prototype.edit = function edit($event, entity) {
-            this.editing = entity;
-        };
-
-        Timesheets.prototype.cancel = function cancel() {
-            this.editing = { id: -1 };
-            this.creating = false;
-        };
-
-        Timesheets.prototype.create = function create() {
-            this.creating = true;
-        };
-
         return Timesheets;
     }()) || _class);
 });
-define('pages/user/logged-redirect',['exports', 'aurelia-framework', 'aurelia-router', '../../services/session'], function (exports, _aureliaFramework, _aureliaRouter, _session) {
+define('pages/user/logged-redirect',['exports', 'aurelia-framework', 'aurelia-router', '../../services/session', '../../services/log'], function (exports, _aureliaFramework, _aureliaRouter, _session, _log) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -3472,22 +3358,20 @@ define('pages/user/logged-redirect',['exports', 'aurelia-framework', 'aurelia-ro
             this.session.start().then(function () {
                 router.navigate('app/timesheets');
             }).catch(function (err) {
-                console.log(err);
+                _log.log.error(err);
             });
         };
 
         return LoggedRedirect;
     }()) || _class);
 });
-define('pages/user/login',['exports', 'aurelia-framework', 'aurelia-auth', 'aurelia-router', '../../services/session', '../../config/app-settings', 'pouchdb', 'pouchdb-authentication', '../../services/log', '../../services/sharding-service'], function (exports, _aureliaFramework, _aureliaAuth, _aureliaRouter, _session, _appSettings, _pouchdb, _pouchdbAuthentication, _log, _shardingService) {
+define('pages/user/login',['exports', 'aurelia-framework', 'aurelia-router', 'pouchdb', 'pouchdb-authentication', '../../services/log', '../../services/sharding-service'], function (exports, _aureliaFramework, _aureliaRouter, _pouchdb, _pouchdbAuthentication, _log, _shardingService) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
         value: true
     });
     exports.Login = undefined;
-
-    var _appSettings2 = _interopRequireDefault(_appSettings);
 
     var _pouchdb2 = _interopRequireDefault(_pouchdb);
 
@@ -3507,20 +3391,17 @@ define('pages/user/login',['exports', 'aurelia-framework', 'aurelia-auth', 'aure
 
     var _dec, _class;
 
-    var Login = exports.Login = (_dec = (0, _aureliaFramework.inject)(_aureliaAuth.AuthService, _shardingService.ShardingService, _aureliaRouter.Router, _session.Session), _dec(_class = function () {
-        function Login(auth, sharding, router, session) {
+    var Login = exports.Login = (_dec = (0, _aureliaFramework.inject)(_shardingService.ShardingService, _aureliaRouter.Router), _dec(_class = function () {
+        function Login(sharding, router) {
             _classCallCheck(this, Login);
 
-            this.auth = auth;
             this.sharding = sharding;
             this.router = router;
-            this.session = session;
-            this.settings = _appSettings2.default;
         }
 
         Login.prototype.login = function login() {
 
-            var login = this;
+            var me = this;
 
             _pouchdb2.default.plugin(_pouchdbAuthentication2.default);
 
@@ -3529,13 +3410,13 @@ define('pages/user/login',['exports', 'aurelia-framework', 'aurelia-auth', 'aure
 
                 if (err) {
                     _log.log.error(err);
-                    login.loginError = err.name;
+                    me.loginError = err.name;
                     $('.ui.form .login.error.message').show();
                     return;
                 }
 
-                localStorage.setItem('aurelia_token', btoa(login.username + ':' + login.password));
-                login.router.navigate('loggedIn');
+                localStorage.setItem('aurelia_token', btoa(me.username + ':' + me.password));
+                me.router.navigate('loggedIn');
             });
         };
 
@@ -3636,7 +3517,7 @@ define('pages/user/password',['exports', 'aurelia-framework', 'aurelia-fetch-cli
         return Password;
     }()) || _class);
 });
-define('pages/user/user-router',['exports', 'aurelia-framework', 'aurelia-fetch-client'], function (exports, _aureliaFramework, _aureliaFetchClient) {
+define('pages/user/user-router',['exports', 'aurelia-framework'], function (exports, _aureliaFramework) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -3650,9 +3531,7 @@ define('pages/user/user-router',['exports', 'aurelia-framework', 'aurelia-fetch-
         }
     }
 
-    var _dec, _class;
-
-    var UserRouter = exports.UserRouter = (_dec = (0, _aureliaFramework.inject)(_aureliaFetchClient.HttpClient), _dec(_class = function () {
+    var UserRouter = exports.UserRouter = function () {
         function UserRouter() {
             _classCallCheck(this, UserRouter);
         }
@@ -3675,7 +3554,7 @@ define('pages/user/user-router',['exports', 'aurelia-framework', 'aurelia-fetch-
         };
 
         return UserRouter;
-    }()) || _class);
+    }();
 });
 define('resources/confirmation/confirmation',['exports', 'aurelia-framework', 'aurelia-dialog'], function (exports, _aureliaFramework, _aureliaDialog) {
     'use strict';
@@ -3997,7 +3876,7 @@ define('resources/dropdown/dropdown',['exports', 'aurelia-framework', '../../ser
         throw new Error('Decorating class property failed. Please ensure that transform-class-properties is enabled.');
     }
 
-    var _dec, _dec2, _class, _desc, _value, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor10, _descriptor11, _descriptor12;
+    var _dec, _dec2, _class, _desc, _value, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9;
 
     var DropDownCustomElement = exports.DropDownCustomElement = (_dec = (0, _aureliaFramework.customElement)('dropdown'), _dec2 = (0, _aureliaFramework.inject)(Element, _dbService.DBService, _aureliaEventAggregator.EventAggregator), _dec(_class = _dec2(_class = (_class2 = function () {
         function DropDownCustomElement(element, db, ea) {
@@ -4007,25 +3886,19 @@ define('resources/dropdown/dropdown',['exports', 'aurelia-framework', '../../ser
 
             _initDefineProp(this, 'selectedEntry', _descriptor2, this);
 
-            _initDefineProp(this, 'parentId', _descriptor3, this);
+            _initDefineProp(this, 'route', _descriptor3, this);
 
-            _initDefineProp(this, 'route', _descriptor4, this);
+            _initDefineProp(this, 'name', _descriptor4, this);
 
-            _initDefineProp(this, 'parentRoute', _descriptor5, this);
+            _initDefineProp(this, 'required', _descriptor5, this);
 
-            _initDefineProp(this, 'name', _descriptor6, this);
+            _initDefineProp(this, 'multiple', _descriptor6, this);
 
-            _initDefineProp(this, 'required', _descriptor7, this);
+            _initDefineProp(this, 'allowAdd', _descriptor7, this);
 
-            _initDefineProp(this, 'multiple', _descriptor8, this);
+            _initDefineProp(this, 'selectAction', _descriptor8, this);
 
-            _initDefineProp(this, 'allowAdd', _descriptor9, this);
-
-            _initDefineProp(this, 'bypassCache', _descriptor10, this);
-
-            _initDefineProp(this, 'selectAction', _descriptor11, this);
-
-            _initDefineProp(this, 'addAction', _descriptor12, this);
+            _initDefineProp(this, 'addAction', _descriptor9, this);
 
             this.element = element;
             this.db = db;
@@ -4048,22 +3921,15 @@ define('resources/dropdown/dropdown',['exports', 'aurelia-framework', '../../ser
             });
             this.load();
 
-            this.ea.subscribe('dbsync', function (response) {
+            this.subscriber = this.ea.subscribe('dbsync', function (response) {
                 if (response.dbName === dropdown.route) {
                     dropdown.load();
                 }
             });
         };
 
-        DropDownCustomElement.prototype.parentIdChanged = function parentIdChanged(newEntry, oldEntry) {
-            if (newEntry == oldEntry) {
-                return;
-            }
-            if (oldEntry) {
-                this.selectedEntry = undefined;
-            }
-            this.restoreDefaults();
-            this.load();
+        DropDownCustomElement.prototype.detached = function detached() {
+            this.subscriber.dispose();
         };
 
         DropDownCustomElement.prototype.selectedEntryChanged = function selectedEntryChanged() {
@@ -4178,44 +4044,33 @@ define('resources/dropdown/dropdown',['exports', 'aurelia-framework', '../../ser
     }), _descriptor2 = _applyDecoratedDescriptor(_class2.prototype, 'selectedEntry', [_aureliaFramework.bindable], {
         enumerable: true,
         initializer: null
-    }), _descriptor3 = _applyDecoratedDescriptor(_class2.prototype, 'parentId', [_aureliaFramework.bindable], {
+    }), _descriptor3 = _applyDecoratedDescriptor(_class2.prototype, 'route', [_aureliaFramework.bindable], {
         enumerable: true,
         initializer: null
-    }), _descriptor4 = _applyDecoratedDescriptor(_class2.prototype, 'route', [_aureliaFramework.bindable], {
+    }), _descriptor4 = _applyDecoratedDescriptor(_class2.prototype, 'name', [_aureliaFramework.bindable], {
         enumerable: true,
         initializer: null
-    }), _descriptor5 = _applyDecoratedDescriptor(_class2.prototype, 'parentRoute', [_aureliaFramework.bindable], {
-        enumerable: true,
-        initializer: null
-    }), _descriptor6 = _applyDecoratedDescriptor(_class2.prototype, 'name', [_aureliaFramework.bindable], {
-        enumerable: true,
-        initializer: null
-    }), _descriptor7 = _applyDecoratedDescriptor(_class2.prototype, 'required', [_aureliaFramework.bindable], {
+    }), _descriptor5 = _applyDecoratedDescriptor(_class2.prototype, 'required', [_aureliaFramework.bindable], {
         enumerable: true,
         initializer: function initializer() {
             return false;
         }
-    }), _descriptor8 = _applyDecoratedDescriptor(_class2.prototype, 'multiple', [_aureliaFramework.bindable], {
+    }), _descriptor6 = _applyDecoratedDescriptor(_class2.prototype, 'multiple', [_aureliaFramework.bindable], {
         enumerable: true,
         initializer: function initializer() {
             return false;
         }
-    }), _descriptor9 = _applyDecoratedDescriptor(_class2.prototype, 'allowAdd', [_aureliaFramework.bindable], {
+    }), _descriptor7 = _applyDecoratedDescriptor(_class2.prototype, 'allowAdd', [_aureliaFramework.bindable], {
         enumerable: true,
         initializer: function initializer() {
             return false;
         }
-    }), _descriptor10 = _applyDecoratedDescriptor(_class2.prototype, 'bypassCache', [_aureliaFramework.bindable], {
-        enumerable: true,
-        initializer: function initializer() {
-            return false;
-        }
-    }), _descriptor11 = _applyDecoratedDescriptor(_class2.prototype, 'selectAction', [_aureliaFramework.bindable], {
+    }), _descriptor8 = _applyDecoratedDescriptor(_class2.prototype, 'selectAction', [_aureliaFramework.bindable], {
         enumerable: true,
         initializer: function initializer() {
             return function () {};
         }
-    }), _descriptor12 = _applyDecoratedDescriptor(_class2.prototype, 'addAction', [_aureliaFramework.bindable], {
+    }), _descriptor9 = _applyDecoratedDescriptor(_class2.prototype, 'addAction', [_aureliaFramework.bindable], {
         enumerable: true,
         initializer: function initializer() {
             return function () {};
@@ -12086,58 +11941,6 @@ define('aurelia-dialog/dialog-service',['exports', 'aurelia-metadata', 'aurelia-
       service.hasActiveDialog = !!service.controllers.length;
     }
   }
-});
-define('services/sharding-service',['exports', 'aurelia-framework', '../config/app-settings'], function (exports, _aureliaFramework, _appSettings) {
-    'use strict';
-
-    Object.defineProperty(exports, "__esModule", {
-        value: true
-    });
-    exports.ShardingService = undefined;
-
-    var _appSettings2 = _interopRequireDefault(_appSettings);
-
-    function _interopRequireDefault(obj) {
-        return obj && obj.__esModule ? obj : {
-            default: obj
-        };
-    }
-
-    function _classCallCheck(instance, Constructor) {
-        if (!(instance instanceof Constructor)) {
-            throw new TypeError("Cannot call a class as a function");
-        }
-    }
-
-    var _dec, _class;
-
-    var MAX_CONNECTIONS = 6;
-
-    var ShardingService = exports.ShardingService = (_dec = (0, _aureliaFramework.singleton)(false), _dec(_class = function () {
-        function ShardingService() {
-            _classCallCheck(this, ShardingService);
-
-            this.curIndex = 0;
-            this.curConnections = 0;
-        }
-
-        ShardingService.prototype.getRemoteUrl = function getRemoteUrl() {
-
-            if (this.curConnections >= MAX_CONNECTIONS) {
-                this.curConnections = 0;
-                this.curIndex++;
-            }
-
-            if (this.curIndex === _appSettings2.default.remoteUrls.length) {
-                this.curIndex = 0;
-            }
-
-            this.curConnections++;
-            return _appSettings2.default.remoteUrls[this.curIndex];
-        };
-
-        return ShardingService;
-    }()) || _class);
 });
 define('text!app.html', ['module'], function(module) { module.exports = "<template>\n  <require from=\"semantic/semantic.css\"></require>\n  <require from=\"./styles/styles.css\"></require>\n\n  <router-view></router-view>\n\n</template>\n\n"; });
 define('text!styles/styles.css', ['module'], function(module) { module.exports = "body {\n  margin: 0;\n}\n\n.splash {\n  text-align: center;\n  margin: 10% 0 0 0;\n  box-sizing: border-box;\n}\n\n.splash .message {\n  font-size: 72px;\n  line-height: 72px;\n  text-shadow: rgba(0, 0, 0, 0.5) 0 0 15px;\n  text-transform: uppercase;\n  font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n}\n\n.splash .fa-spinner {\n  text-align: center;\n  display: inline-block;\n  font-size: 72px;\n  margin-top: 50px;\n}\n\nai-dialog-container.active .ui.modal {\n  display: block;\n}\n\n.page-host {\n}\n\n@media print {\n  .page-host {\n    position: absolute;\n    left: 10px;\n    right: 0;\n    top: 50px;\n    bottom: 0;\n    overflow-y: inherit;\n    overflow-x: inherit;\n  }\n}\n\nsection {\n  margin: 0 20px;\n}\n\n/* Navbar */\n.ui.menu.navbar {\n  margin-top: 0;\n}\n\n.navbar-nav li.loader {\n  margin: 12px 24px 0 6px;\n}\n\n.pictureDetail {\n  max-width: 425px;\n}\n\n/* animate page transitions */\nsection.au-enter-active {\n  -webkit-animation: fadeInRight 1s;\n  animation: fadeInRight 1s;\n}\n\ndiv.au-stagger {\n  /* 50ms will be applied between each successive enter operation */\n  -webkit-animation-delay: 50ms;\n  animation-delay: 50ms;\n}\n\n/* Login aligned in middle */\ndiv.ui.login.grid {\n  height: 100%;\n}\n\n/* New and Edit Entry Form */\ntimesheet-entry {\n  width: 90%;\n}\n\n.timesheet-entry .ui.calendar {\n  margin-left: 0.5em;\n}\n\n.timesheet-entry + .ui.button {\n  margin-top: 20px;\n}\n\n/** List of previous timesheet entries **/\n.timesheet .ui.fluid.entries {\n  width: 90%;\n}\n\n.timesheet .ui.fluid.entries .title {\n  text-align: left;\n  background-color: #F8F8F9;\n}\n\n/** Admin allocation panel **/\n\n.user.timesheet,\n.user.report {\n  margin-bottom: 20px;\n}\n\n.user.timesheet .button {\n  vertical-align: middle;\n  margin: auto;\n  margin-left: 0;\n}\n\n/* Cards */\n\n.card-container.au-enter {\n  opacity: 0;\n}\n\n.card-container.au-enter-active {\n  -webkit-animation: fadeIn 2s;\n  animation: fadeIn 2s;\n}\n\n.card {\n  overflow: hidden;\n  position: relative;\n  border: 1px solid #CCC;\n  border-radius: 8px;\n  text-align: center;\n  padding: 0;\n  background-color: #337ab7;\n  color: rgb(136, 172, 217);\n  margin-bottom: 32px;\n  box-shadow: 0 0 5px rgba(0, 0, 0, .5);\n}\n\n.card .content {\n  margin-top: 10px;\n}\n\n.card .content .name {\n  color: white;\n  text-shadow: 0 0 6px rgba(0, 0, 0, .5);\n  font-size: 18px;\n}\n\n.card .header-bg {\n  /* This stretches the canvas across the entire hero unit */\n  position: absolute;\n  top: 0;\n  left: 0;\n  width: 100%;\n  height: 70px;\n  border-bottom: 1px #FFF solid;\n  border-radius: 6px 6px 0 0;\n}\n\n.card .avatar {\n  position: relative;\n  margin-top: 15px;\n  z-index: 100;\n}\n\n.card .avatar img {\n  width: 100px;\n  height: 100px;\n  -webkit-border-radius: 50%;\n  -moz-border-radius: 50%;\n  border-radius: 50%;\n  border: 2px #FFF solid;\n}\n\n/** Flash Messages **/\n.flash {\n    margin-bottom: 20px;\n}\n\n.flash .message {\n    display: none;\n}\n\n.flash .message.background-animation-add,\n.flash .message.background-animation-remove {\n    display: block;\n}\n\n.background-animation-add.positive {\n    display: block;\n    -webkit-animation: flashSuccess 4s;\n    animation: flashSuccess 4s;\n}\n\n.background-animation-add.negative {\n    display: block;\n    -webkit-animation: flashError 8s;\n    animation: flashError 8s;\n    color: white;\n}\n\n@-webkit-keyframes flashSuccess {\n    0% { background-color: white; }\n    25% { background-color: #a3c293; }\n    50% { background-color: white; }\n    75% { background-color: #a3c293; }\n    100% { background-color: white; }\n}\n\n@keyframes flashSuccess {\n    0% { background-color: white; }\n    25% { background-color: #a3c293; }\n    50% { background-color: white; }\n    75% { background-color: #a3c293; }\n    100% { background-color: white; }\n}\n\n@-webkit-keyframes flashError {\n    0% { background-color: #FFF6F6; }\n    5% { background-color: #9f3a38; }\n    15% { background-color: #FFF6F6; }\n}\n\n@keyframes flashError {\n    0% { background-color: #FFF6F6; }\n    5% { background-color: #9f3a38; }\n    15% { background-color: #FFF6F6; }\n}\n\n@media only screen and (max-device-width: 767px) {\n\n  .timesheet-entry .ui.calendar {\n    margin-left: 0;\n  }\n\n  .timesheet-entry.ui.form .two.hours.fields > .field {\n    width: 50% !important;\n  }\n\n  .timesheet-entry.ui.form .two.hours.fields > .field input {\n    width: 60px;\n  }\n\n  .ui.monthly.timesheet.table thead {\n    display: none;\n  }\n}"; });

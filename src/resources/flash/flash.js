@@ -6,6 +6,10 @@ import { FlashSuccessMessage } from './flash-success-message';
 import { FlashErrorMessage } from './flash-error-message';
 
 @inject(Element, EventAggregator, CssAnimator)
+
+/**
+ * Custom element for Flash Mesages, Animates the flash message
+ */
 export class Flash {
     
     message = '';

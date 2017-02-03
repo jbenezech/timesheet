@@ -4,18 +4,27 @@ import { EventAggregator } from 'aurelia-event-aggregator';
 
 @customElement('dropdown')
 @inject(Element, DBService, EventAggregator)
+
+/**
+ * Dropdown custom element for SemanticUI
+ * Loads data from backend. Bindings:
+ * - selectedEntry : bind the selected key with parent element's attribute
+ * - route: name of the database to load documents from
+ * - name: name of the select element
+ * - required: boolean
+ * - multiple: boolean for multiple selects
+ * - selectAction: action to call on parent element when an entry is selected
+ * - addAction: action to call when a new entry is added
+ */
 export class DropDownCustomElement {
 
     @bindable entries;
     @bindable selectedEntry;
-    @bindable parentId;
     @bindable route;
-    @bindable parentRoute;
     @bindable name;
     @bindable required = false;
     @bindable multiple = false;
     @bindable allowAdd = false;
-    @bindable bypassCache = false;
     @bindable selectAction = () => {};
     @bindable addAction = () => {};
     
@@ -46,23 +55,15 @@ export class DropDownCustomElement {
         });
         this.load();
 
-        this.ea.subscribe('dbsync', response => {
+        this.subscriber = this.ea.subscribe('dbsync', response => {
             if (response.dbName === dropdown.route) {
                 dropdown.load();
             }
         });
     }
 
-    parentIdChanged(newEntry, oldEntry) {
-        //only == because input field coerces int into string
-        if (newEntry == oldEntry) {
-            return;
-        }
-        if (oldEntry) {
-            this.selectedEntry = undefined;
-        }
-        this.restoreDefaults();
-        this.load();
+    detached() {
+        this.subscriber.dispose();
     }
 
     selectedEntryChanged() {

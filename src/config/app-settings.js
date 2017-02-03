@@ -1,10 +1,10 @@
+        //'https://ruelle.cloudant.com/'
 var settings = {
     remoteUrls: [
-        'http://ruelle1.mykampot.com/',
-        'http://ruelle2.mykampot.com/'
+        'https://proacti.cloudant.com/'
     ],
     default_locale: 'fr-FR',
-    debug: false,
+    debug: true,
 
     calendar_text: {
         days: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
@@ -17,6 +17,5 @@ var settings = {
     }
 }
 
-settings.debug = true;
 
 export default settings;

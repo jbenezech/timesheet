@@ -1,31 +1,30 @@
 import { inject } from 'aurelia-framework';
-import { Session } from '../services/session';
 import { I18N } from 'aurelia-i18n';
-import { DBService } from '../services/db-service';
-import {DialogService} from "aurelia-dialog";
-import {Confirmation} from "../resources/confirmation/confirmation";
-import settings from '../config/app-settings';
-import { Router } from 'aurelia-router';
+import { DialogService } from "aurelia-dialog";
 import { EventAggregator } from 'aurelia-event-aggregator';
 
-@inject(Session, I18N, DBService, DialogService, EventAggregator, Router)
+import { Confirmation } from "../resources/confirmation/confirmation";
+import { DBService } from '../services/db-service';
+import { Session } from '../services/session';
+import settings from '../config/app-settings';
+import { log } from '../services/log';
+
+@inject(Session, I18N, DBService, DialogService, EventAggregator)
 export class TopBar {
 
-    title = 'Timeflies';
+    //marker to show erros alarm
     error = false;
     
-    constructor(session, i18n, db, dialogService, ea, router) {    
+    constructor(session, i18n, db, dialogService, ea) {    
         this.session = session;   
         this.i18n = i18n;
         this.db = db;
         this.dialogService = dialogService;
         this.ea = ea;
-        this.router = router;
-        this.title = this.i18n.tr('site_title');
     }
 
     get isAdmin() {
-        return this.session.userHasRole('admin');
+        return this.session.isGranted('admin');
     }
     
     get isSynced() {
@@ -33,6 +32,8 @@ export class TopBar {
     }
 
     logout() {
+        //When logging out, first check if there are updates not synced with remote yet
+        //if so, ask confirmation as these will be lost
         if (this.db.hasUnsyncedUpdate()) {
             this.dialogService.open({
                 viewModel: Confirmation,
@@ -52,10 +53,9 @@ export class TopBar {
     }
 
     attached() {
-        $('.language-switch').dropdown();
-
         let me = this;
         this.ea.subscribe('dberr', response => {
+            log.error(response);
             this.error = true;
         });
     }
@@ -64,7 +64,4 @@ export class TopBar {
         this.navigate('app/timesheets/planning');
     }
 
-    switchLocale(locale) {
-        this.session.switchLocale(locale);
-    }
 }

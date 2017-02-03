@@ -1,17 +1,21 @@
 
-import { inject, NewInstance, bindable, observable } from 'aurelia-framework';
-import { HttpClient } from 'aurelia-fetch-client';
+import { inject, NewInstance, bindable } from 'aurelia-framework';
 import { EventAggregator } from 'aurelia-event-aggregator';
-import { TimesheetsRouter } from './timesheets-router';
-import { Session } from '../../services/session';
-import { DBService } from '../../services/db-service';
-import settings from '../../config/app-settings';
-import {ValidationRules, ValidationController} from 'aurelia-validation';
+import { ValidationRules, ValidationController } from 'aurelia-validation';
 import moment from 'moment';
 import { I18N } from 'aurelia-i18n';
 import { FlashSuccessMessage } from '../../resources/flash/flash-success-message';
 
+import settings from '../../config/app-settings';
+import { TimesheetsRouter } from './timesheets-router';
+import { Session } from '../../services/session';
+import { DBService } from '../../services/db-service';
+
 @inject(Element, Session, DBService, I18N, EventAggregator, TimesheetsRouter, NewInstance.of(ValidationController))
+
+/**
+ * VM to edit or create a timesheet entry
+ */
 export class TimesheetEntry {
 
     @bindable entity = {};
@@ -85,6 +89,7 @@ export class TimesheetEntry {
 
         let me = this;
         if (! this.create ) {
+            //An entry already created cannot be moved to a different month
             ValidationRules.customRule(
                 'monthUnchanged',
                 (value, obj) => me.isMonthUnChanged()
@@ -125,9 +130,9 @@ export class TimesheetEntry {
     getTimesheetEntry(timesheetId, entryId) {
         let me = this;
 
-        return this.db.get('timesheet-' + this.session.getUser().name,  timesheetId).then( response => {
-            
-            response.entries.forEach(function(entry) {
+        return this.db.get('timesheet-' + this.session.getUser().name,  timesheetId)
+        .then( response => {
+            response.map( (entry) => {            
                 if (entry.id === entryId) {
                     me.entity = entry;
                 }
@@ -151,6 +156,7 @@ export class TimesheetEntry {
                 return;
             }
 
+            //manually edit as binding won't work with semantic calendar
             this.entity.date = this.getCalendarDate();
 
             if (this.create) {
@@ -173,6 +179,7 @@ export class TimesheetEntry {
                 }
                 
                 //if entry already exists, remove it first
+                //traverese the array reverse to remove entries
                 let entry = this.entity;
                 timesheet.entries.slice().reverse().forEach(function(item, index, object) {
                     if (item.id === entry.id) {
@@ -190,6 +197,7 @@ export class TimesheetEntry {
                 );
             
                 if (this.create) {
+                    //reset entity for new entry
                     this.entity = {
                         purpose: this.entity.purpose,
                         hours: 0,

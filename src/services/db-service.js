@@ -21,6 +21,14 @@ export class DBService {
     lastUpdates = new Map();
     lastSyncs = new Map();
 
+    liveReplicates = [
+        '^accounting$',
+        '^allocation$',
+        '^interpret$',
+        '^purpose$',
+        '^timesheet\-{0}$'
+    ];
+
     constructor(session, sharding, http, ea) {
         this.session = session;
         this.sharding = sharding;
@@ -52,7 +60,7 @@ export class DBService {
 
         let handler = db.sync(
             this.sharding.getRemoteUrl() + dbName, 
-            me.getSyncOptions()
+            me.getSyncOptions(dbName)
         ).on('change', function (change) {
 
             me.addSyncCheckpoint(dbName);
@@ -82,30 +90,42 @@ export class DBService {
 
     }
 
-    getSyncOptions() {
-        return {
-            live: true,
-            retry: true,            
+    getSyncOptions(dbName) {
+        //We can't use live replication with all databases as browsers have a limit
+        //on the number of active connections per host.
+        //The shrading service does not work over https for cloudant
+        //So for now, only replicate live restricted databases
+        let token = localStorage.getItem('aurelia_token');
+        let options = {
             ajax: {
                 "headers": {
-                    "Authorization": "Basic " + localStorage.getItem('aurelia_token')
+                    "Authorization": "Basic " + token
                 }
             }
-        };
+        }
+
+        let user = atob(localStorage.getItem('aurelia_token')).split(':')[0];
+        for (let db of this.liveReplicates) {
+            if (dbName.match(new RegExp(db.replace('{0}', user)))) {
+                options.live = true;
+                options.retry = true;
+                break;
+            }
+        }
+        
+        return options;
     }
 
     handleSyncError(db, err) {
         //destroy local database if permission has been revoked or remote database has been deleted
         if (err.status === 403 || err.status === 404) {
-
-            this.syncHandlers.get(db.name).cancel();    
-            this.syncHandlers.delete(db.name);
-            db.destroy();
-            this.dbs.delete(db.name);
-
+            this.removeDB(db);
         } else if (err.status === 401) {
             //unauthorized, user has been revoked or password changed. Remove local storage
             this.session.invalidate();
+        } else if (err.result !== undefined && err.result.status === 'cancelled') {
+            //seems to happen when removing the databases while they are syncing
+            log.error(err);            
         } else {
             //Not sure what error this is but we need to report it
             this.ea.publish('dberr', {dbName: db.name, err: err});
@@ -127,34 +147,43 @@ export class DBService {
         }
     }
 
+    removeDB(db) {
+        if (this.syncHandlers.has(db.name)) {
+            this.syncHandlers.get(db.name).cancel();
+            this.syncHandlers.delete(db.name);
+        }
+        this.dbs.delete(db.name);
+        this.removeUpdateCheckpoint(db.name);
+        this.removeSyncCheckpoint(db.name);
+        return db.destroy();
+    }
+
     //removes all databases
     removeDBs() {
         let me = this;
         let promises = [];
         //stop replication on all databases
         this.dbs.forEach(function (db, dbName) {
-            if (me.syncHandlers.has(dbName)) {
-                me.syncHandlers.get(dbName).cancel();
-                me.syncHandlers.delete(dbName);
-            }
-            me.dbs.delete(dbName);
-            promises.push(db.destroy());
-
+            promises.push(me.removeDB(db));
         });
 
-        //remove all indexdb databases (some might be there but no mounted in memory)
-        //https://gist.github.com/rmehner/b9a41d9f659c9b1c3340
-        window.indexedDB.webkitGetDatabaseNames().onsuccess = function(event) {
-            Array.prototype.forEach.call(event.target.result, indexedDB.deleteDatabase.bind(indexedDB));
-        }
+        return Promise.all(promises)
+        .then( () => {
 
-        //also remove sync markers
-        localStorage.removeItem('last-updates');
-        localStorage.removeItem('last-syncs');
-        this.lastUpdates.clear();
-        this.lastSyncs.clear();
+            //remove all indexdb databases (some might be there but no mounted in memory)
+            //https://gist.github.com/rmehner/b9a41d9f659c9b1c3340
+            window.indexedDB.webkitGetDatabaseNames().onsuccess = function(event) {
+                Array.prototype.forEach.call(event.target.result, indexedDB.deleteDatabase.bind(indexedDB));
+            }
 
-        return Promise.all(promises);
+            //also remove sync markers
+            localStorage.removeItem('last-updates');
+            localStorage.removeItem('last-syncs');
+            this.lastUpdates.clear();
+            this.lastSyncs.clear();
+            return new Promise( (resolve) => resolve() );
+        });
+
     }
 
     listUsers() {
@@ -361,22 +390,33 @@ export class DBService {
     }
 
     addUpdateCheckpoint(dbName) {
-
         this.lastUpdates.set(dbName, Date.now());
 
         //persist to storage in case user closes browser
-        let storage = [];
-        this.lastUpdates.forEach( (value, key) => storage = [...storage, [key, value]] );
-        localStorage.setItem('last-updates', JSON.stringify(storage));
+        this.persistMap(this.lastUpdates, 'last-updates');
     }
 
     addSyncCheckpoint(dbName) {
         this.lastSyncs.set(dbName, Date.now());
 
         //persist to storage in case user closes browser
+        this.persistMap(this.lastSyncs, 'last-syncs');
+    }
+
+    removeUpdateCheckpoint(dbName) {
+        this.lastUpdates.delete(dbName);
+        this.persistMap(this.lastUpdates, 'last-updates');
+    }
+
+    removeSyncCheckpoint(dbName) {
+        this.lastSyncs.delete(dbName);
+        this.persistMap(this.lastSyncs, 'last-syncs');
+    }
+
+    persistMap(map, name) {
         let storage = [];
-        this.lastSyncs.forEach( (value, key) => storage = [...storage, [key, value]] );
-        localStorage.setItem('last-syncs', JSON.stringify(storage));
+        map.forEach( (value, key) => storage = [...storage, [key, value]] );
+        localStorage.setItem(name, JSON.stringify(storage));
     }
 
     restoreCheckpoints() {

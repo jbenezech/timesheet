@@ -1,36 +1,50 @@
 import { inject, bindable, TaskQueue } from 'aurelia-framework';
 import { EventAggregator } from 'aurelia-event-aggregator';
-import { AdminRouter } from './admin-router';
-import { Session } from '../../services/session';
-import { DBService } from '../../services/db-service';
 import { AccountingService } from '../../services/accounting-service';
-import settings from '../../config/app-settings';
 import moment from 'moment';
 import { I18N } from 'aurelia-i18n';
 import Decimal from 'decimal';
+
+import { AdminRouter } from './admin-router';
+import { DBService } from '../../services/db-service';
+import settings from '../../config/app-settings';
 import { log } from '../../services/log';
 
-@inject(Session, DBService, AccountingService, I18N, EventAggregator, TaskQueue, AdminRouter)
+@inject(DBService, AccountingService, I18N, EventAggregator, TaskQueue)
+
+/**
+ * VM for accounting reports
+ */
 export class AdminReports {
 
+    //month for which the report is shown
     @bindable month;
+
+    //map of all user names => user docs
     users = new Map();
+
+    //maps allocation ids => names
     allocations = new Map();
+
+    //reports for each user mapping username => accounting report
     allocationUserReports = new Map();
-    allocationReports = [];    
+
+    //aggregate reports for each allocation
+    allocationReports = [];
+
+    //switch to see total monthly report or per user report
     showMonthAggregate = false;
 
-    constructor(session, db, accounting, i18n, ea, taskQueue, router) {
-        this.session = session;
+    constructor(db, accounting, i18n, ea, taskQueue) {
         this.db = db;
         this.accounting = accounting;
         this.i18n = i18n;
         this.ea = ea;
-        this.router = router;
         this.taskQueue = taskQueue;
     }
 
     attached() {
+
         let me = this;
         $('#showMonthAggregate').checkbox({
             onChange: function() {
@@ -40,18 +54,29 @@ export class AdminReports {
 
         this.loadReports();
 
-        this.ea.subscribe('dbsync', response => {
+        //reload data if timesheet is synced from remote with new data
+        this.subscriber = this.ea.subscribe('dbsync', response => {
             if (response.dbName.match(/^timesheet\-/)) {
-                me.loadReports();
+                me.retrieveAllocationReports().then( () => {
+                    me.taskQueue.queueMicroTask(() => {
+                        me.generateUsersExportLinks();                                        
+                        me.aggregateReports();
+                    });
+                })
             }
         });
 
+    }
+
+    detached() {
+        this.subscriber.dispose();
     }
 
     refresh() {
         this.loadReports();
     }
 
+    //retrieves the representation the month after current one
     getNextMonth() {
 
         let monthArr = this.month.split('-');
@@ -66,15 +91,14 @@ export class AdminReports {
     }
 
     loadReports() {
-        this.retrieveUsers().then( () => {
-            this.retrieveAllocations().then( () => {
-                this.retrieveAllocationReports().then( () => {
-                    this.taskQueue.queueMicroTask(() => {
-                        this.generateUsersExportLinks();                                        
-                        this.aggregateReports();
-                    });
-                })
-            })
+        this.retrieveUsers()
+        .then( () => this.retrieveAllocations() )
+        .then( () => this.retrieveAllocationReports() )
+        .then( () => {
+            this.taskQueue.queueMicroTask(() => {
+                this.generateUsersExportLinks();                                        
+                this.aggregateReports();
+            });
         });
     }
 
@@ -106,8 +130,14 @@ export class AdminReports {
         });
     }
 
+    /**
+     * Retrieve and calculate reports for each users
+     * Calculation is currently done in memory because only javascript views
+     * can be used on cloudant and they cannot be used to do floating point arithemtics.
+     * Ideally, an Erlang view can probably be used to do that
+     */
     retrieveAllocationReports() {
-        
+
         let me = this;
 
         let promises = [];
@@ -226,6 +256,7 @@ export class AdminReports {
         return result;
     }
 
+    //aggregates all reports on allocation, regardless of user
     aggregateReports() {
 
         let allReports = [];
@@ -252,6 +283,7 @@ export class AdminReports {
 
     }
 
+    //attach links to download reports as csv
     generateUsersExportLinks() {
 
         let me = this;

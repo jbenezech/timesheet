@@ -1,24 +1,24 @@
 import { inject, singleton } from 'aurelia-framework';
-import { Session} from './session';
 import PouchDB from 'pouchdb';
 import moment from 'moment';
-import { EventAggregator } from 'aurelia-event-aggregator';
-import { HttpClient } from 'aurelia-fetch-client';
-import { log } from './log';
-import { DBService } from './db-service';
 import Decimal from 'decimal';
 
-@inject(Session, DBService, HttpClient, EventAggregator)
+import { log } from './log';
+import { DBService } from './db-service';
+
+@inject(DBService)
 @singleton()
+
+/**
+ * Service to retrieve accounting rules from remote and calculate
+ * the different accounting entries for a salary slip
+ */
 export class AccountingService {
 
     rules = new Map();
 
-    constructor(session, db, http, ea) {
-        this.session = session;
+    constructor(db) {
         this.db = db;
-        this.http = http;
-        this.ea = ea;
     }
 
     retrieveRules(accountingRuleEndKey) {
