@@ -49,7 +49,7 @@ export class App {
 
 
     configureRouter(config, router) {
-        config.title = 'Timeflies';
+        config.title = 'Ruelle';
 
         config.addPipelineStep('authorize', AuthorizeStep);
         let userApp = {
@@ -57,7 +57,6 @@ export class App {
             name: 'home', 
             moduleId: 'components/user-app-router', 
             nav: false, 
-            title: 'Home',
             auth: true  
         };
 

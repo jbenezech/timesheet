@@ -1,11 +1,13 @@
 import { inject } from 'aurelia-framework';
 import { Router } from 'aurelia-router';
+import { I18N } from 'aurelia-i18n';
 
-@inject(Router)
+@inject(Router, I18N)
 export class AdminRouter {
 
-    constructor(router) {
+    constructor(router, i18n) {
         this.router = router;
+        this.i18n = i18n;
     }
 
     configureRouter(config) {
@@ -16,7 +18,7 @@ export class AdminRouter {
                 name: 'planning',
                 moduleId: './planning',
                 nav: false,
-                title: 'Planning',
+                title: this.i18n.tr('planning'),
                 auth: true
             },
             { 
@@ -24,7 +26,7 @@ export class AdminRouter {
                 name: 'panel',
                 moduleId: './admin-panel',
                 nav: false,
-                title: 'Timesheet',
+                title: this.i18n.tr('budgetting'),
                 auth: true
             }
         ]);

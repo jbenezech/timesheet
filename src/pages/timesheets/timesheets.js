@@ -71,6 +71,7 @@ export class Timesheets {
 
         this.retrieveData();
 
+        let me = this;
         this.subscriber = this.ea.subscribe('dbsync', response => {
             me.retrieveData();
         });

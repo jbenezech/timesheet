@@ -54,7 +54,7 @@ define('app',['exports', 'aurelia-fetch-client', 'aurelia-framework', 'aurelia-i
         };
 
         App.prototype.configureRouter = function configureRouter(config, router) {
-            config.title = 'Timeflies';
+            config.title = 'Ruelle';
 
             config.addPipelineStep('authorize', _aureliaAuth.AuthorizeStep);
             var userApp = {
@@ -62,7 +62,6 @@ define('app',['exports', 'aurelia-fetch-client', 'aurelia-framework', 'aurelia-i
                 name: 'home',
                 moduleId: 'components/user-app-router',
                 nav: false,
-                title: 'Home',
                 auth: true
             };
 
@@ -385,7 +384,7 @@ define('environment',["exports"], function (exports) {
     testing: true
   };
 });
-define('main',['exports', 'aurelia-fetch-client', 'aurelia-event-aggregator', 'aurelia-i18n', 'semantic', 'semantic-calendar/calendar', 'pouchdb', 'aurelia-framework', 'aurelia-logging-console', 'lib/form/semantic-form-validation-renderer', './config/app-settings'], function (exports, _aureliaFetchClient, _aureliaEventAggregator, _aureliaI18n, _semantic, _calendar, _pouchdb, _aureliaFramework, _aureliaLoggingConsole, _semanticFormValidationRenderer, _appSettings) {
+define('main',['exports', 'aurelia-fetch-client', 'aurelia-event-aggregator', 'aurelia-i18n', 'i18next-xhr-backend', 'semantic', 'semantic-calendar/calendar', 'aurelia-framework', 'aurelia-logging-console', 'lib/form/semantic-form-validation-renderer', './config/app-settings'], function (exports, _aureliaFetchClient, _aureliaEventAggregator, _aureliaI18n, _i18nextXhrBackend, _semantic, _calendar, _aureliaFramework, _aureliaLoggingConsole, _semanticFormValidationRenderer, _appSettings) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -393,11 +392,11 @@ define('main',['exports', 'aurelia-fetch-client', 'aurelia-event-aggregator', 'a
     });
     exports.configure = configure;
 
+    var _i18nextXhrBackend2 = _interopRequireDefault(_i18nextXhrBackend);
+
     var _semantic2 = _interopRequireDefault(_semantic);
 
     var _calendar2 = _interopRequireDefault(_calendar);
-
-    var _pouchdb2 = _interopRequireDefault(_pouchdb);
 
     var _appSettings2 = _interopRequireDefault(_appSettings);
 
@@ -411,16 +410,24 @@ define('main',['exports', 'aurelia-fetch-client', 'aurelia-event-aggregator', 'a
     _aureliaFramework.LogManager.setLevel(_aureliaFramework.LogManager.logLevel.debug);
 
     function configure(aurelia) {
+        Promise.config({
+            longStackTraces: false,
+            warnings: false
+        });
+
         aurelia.use.standardConfiguration().developmentLogging().plugin("aurelia-dialog").plugin('aurelia-validation').plugin('aurelia-i18n', function (instance) {
+
+            instance.i18next.use(_i18nextXhrBackend2.default);
+
             instance.i18next.options.load = 'currentOnly';
             instance.i18next.options.lowerCaseLng = false;
             instance.i18next.options.cleanCode = false;
 
             return instance.setup({
-                lngs: ['en-US', 'fr-FR'],
+                resGetPath: 'locales/__lng__/__ns__.json',
+                lngs: ['fr-FR'],
                 fallbackLng: _appSettings2.default.default_locale,
                 debug: _appSettings2.default.debug,
-
                 ns: ['translation'],
                 defaultNs: 'translation'
             });
@@ -719,7 +726,7 @@ define('services/accounting-service',['exports', 'aurelia-framework', 'pouchdb',
                     provision_cp_charges: new _decimal2.default(row.value[2]),
                     prime_precarite_brut: new _decimal2.default(row.value[3]),
                     net_payable: new _decimal2.default(row.value[4]),
-                    ursaff: new _decimal2.default(row.value[5])
+                    urssaf: new _decimal2.default(row.value[5])
                 });
             });
         };
@@ -745,7 +752,7 @@ define('services/accounting-service',['exports', 'aurelia-framework', 'pouchdb',
                 charges: salarySlip.salary.mul(rules.charges),
                 provisionCPBrut: salarySlip.salary.mul(rules.provision_cp_brut),
                 netPayable: salarySlip.salary.mul(rules.net_payable),
-                ursaff: salarySlip.salary.mul(rules.ursaff)
+                urssaf: salarySlip.salary.mul(rules.urssaf)
             };
 
             accounts.provisionCPCharges = accounts.charges.mul(rules.provision_cp_charges);
@@ -1276,75 +1283,6 @@ define('services/log',["exports", "aurelia-framework"], function (exports, _aure
   });
   exports.log = undefined;
   var log = exports.log = _aureliaFramework.LogManager.getLogger('timesheet');
-});
-define('services/route-loader',['exports', 'aurelia-framework', 'aurelia-fetch-client'], function (exports, _aureliaFramework, _aureliaFetchClient) {
-    'use strict';
-
-    Object.defineProperty(exports, "__esModule", {
-        value: true
-    });
-    exports.RouteLoader = undefined;
-
-    function _classCallCheck(instance, Constructor) {
-        if (!(instance instanceof Constructor)) {
-            throw new TypeError("Cannot call a class as a function");
-        }
-    }
-
-    var _dec, _dec2, _class;
-
-    var RouteLoader = exports.RouteLoader = (_dec = (0, _aureliaFramework.inject)(_aureliaFetchClient.HttpClient), _dec2 = (0, _aureliaFramework.singleton)(), _dec(_class = _dec2(_class = function () {
-        function RouteLoader(httpClient) {
-            _classCallCheck(this, RouteLoader);
-
-            this.cache = new Map();
-
-            this.http = httpClient;
-        }
-
-        RouteLoader.prototype.invalidateCache = function invalidateCache() {
-            this.cache.clear();
-        };
-
-        RouteLoader.prototype.load = function load(route, parentRoute, parentId, bypassCache) {
-
-            if (!route) {
-                return new Promise(function (resolve) {});
-            }
-
-            if (parentRoute && !parentId) {
-                return new Promise(function (resolve) {});
-            }
-
-            if (parentId) {
-                if (Array.isArray(parentId)) {
-                    route = route + '?';
-                    parentId.forEach(function (value) {
-                        route += parentRoute + '[]=' + value + '&';
-                    });
-                } else {
-                    route = parentRoute + '/' + parentId + '/' + route;
-                }
-            }
-
-            var loader = this;
-
-            if (!bypassCache && this.cache.has(route)) {
-                return new Promise(function (resolve) {
-                    resolve(loader.cache.get(route));
-                });
-            }
-
-            return this.http.fetch(route).then(function (response) {
-                return response.json();
-            }).then(function (entities) {
-                loader.cache.set(route, entities);
-                return entities;
-            });
-        };
-
-        return RouteLoader;
-    }()) || _class) || _class);
 });
 define('services/session',['exports', 'aurelia-framework', 'aurelia-router', 'aurelia-auth', 'aurelia-i18n', 'pouchdb', '../config/app-settings', './log', './sharding-service'], function (exports, _aureliaFramework, _aureliaRouter, _aureliaAuth, _aureliaI18n, _pouchdb, _appSettings, _log, _shardingService) {
     'use strict';
@@ -2187,7 +2125,7 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
 
 
             var me = this;
-            var csvContent = this.month + '\n' + this.i18n.tr('allocation') + ';' + this.i18n.tr('ratio') + ';' + this.i18n.tr('duration') + ';' + this.i18n.tr('salary') + ';' + this.i18n.tr('charges') + ';' + this.i18n.tr('provisionCP-brut') + ';' + this.i18n.tr('provisionCP-charges') + ';' + this.i18n.tr('primeprecarite-brut') + ';' + this.i18n.tr('primeprecarite-charges') + '\n';
+            var csvContent = this.month + '\n' + this.i18n.tr('allocation') + ';' + this.i18n.tr('ratio') + ';' + this.i18n.tr('duration') + ';' + this.i18n.tr('salary') + ';' + this.i18n.tr('charges') + ';' + this.i18n.tr('provisionCPbrut') + ';' + this.i18n.tr('provisionCPcharges') + ';' + this.i18n.tr('precaritebrut') + ';' + this.i18n.tr('precaritecharges') + '\n';
 
             var reports = this.allocationReports;
             var fileName = me.month + '.csv';
@@ -2207,7 +2145,7 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
                 csvContent += report.allocationName + ';' + report.ratio + ';' + report.duration + ';' + report.salary + ';' + report.accounts.charges + ';' + report.accounts.provisionCPBrut + ';' + report.accounts.provisionCPCharges + ';' + report.accounts.primePrecariteBrut + ';' + report.accounts.primePrecariteCharges + '\n';
             };
 
-            csvContent += ';' + reports.totals.ratio + ';' + reports.totals.duration + ';' + reports.totals.salary + ';' + reports.totals.accounts.charges + ';' + reports.totals.accounts.provisionCPBrut + ';' + reports.totals.accounts.provisionCPCharges + ';' + reports.totals.accounts.primePrecariteBrut + ';' + reports.totals.accounts.primePrecariteCharges + '\n' + this.i18n.tr('netpayable') + ';' + reports.totals.accounts.netPayable + '\n' + this.i18n.tr('ursaaf') + ';' + reports.totals.accounts.ursaff + '\n' + this.i18n.tr('provisionCP') + ';' + reports.totals.accounts.provisionCP + '\n' + this.i18n.tr('provisionprecarite') + ';' + reports.totals.accounts.provisionPrecarite + '\n';
+            csvContent += ';' + reports.totals.ratio + ';' + reports.totals.duration + ';' + reports.totals.salary + ';' + reports.totals.accounts.charges + ';' + reports.totals.accounts.provisionCPBrut + ';' + reports.totals.accounts.provisionCPCharges + ';' + reports.totals.accounts.primePrecariteBrut + ';' + reports.totals.accounts.primePrecariteCharges + '\n' + this.i18n.tr('netpayable') + ';' + reports.totals.accounts.netPayable + '\n' + this.i18n.tr('urssaf') + ';' + reports.totals.accounts.urssaf + '\n' + this.i18n.tr('provisionCPbrut') + ';' + reports.totals.accounts.provisionCP + '\n' + this.i18n.tr('provisionprecarite') + ';' + reports.totals.accounts.provisionPrecarite + '\n';
 
             lnk.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(csvContent));
             lnk.setAttribute('download', fileName);
@@ -2219,7 +2157,7 @@ define('pages/admin/admin-reports',['exports', 'aurelia-framework', 'aurelia-eve
         initializer: null
     })), _class2)) || _class);
 });
-define('pages/admin/admin-router',['exports', 'aurelia-framework', 'aurelia-router'], function (exports, _aureliaFramework, _aureliaRouter) {
+define('pages/admin/admin-router',['exports', 'aurelia-framework', 'aurelia-router', 'aurelia-i18n'], function (exports, _aureliaFramework, _aureliaRouter, _aureliaI18n) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -2235,11 +2173,12 @@ define('pages/admin/admin-router',['exports', 'aurelia-framework', 'aurelia-rout
 
     var _dec, _class;
 
-    var AdminRouter = exports.AdminRouter = (_dec = (0, _aureliaFramework.inject)(_aureliaRouter.Router), _dec(_class = function () {
-        function AdminRouter(router) {
+    var AdminRouter = exports.AdminRouter = (_dec = (0, _aureliaFramework.inject)(_aureliaRouter.Router, _aureliaI18n.I18N), _dec(_class = function () {
+        function AdminRouter(router, i18n) {
             _classCallCheck(this, AdminRouter);
 
             this.router = router;
+            this.i18n = i18n;
         }
 
         AdminRouter.prototype.configureRouter = function configureRouter(config) {
@@ -2249,14 +2188,14 @@ define('pages/admin/admin-router',['exports', 'aurelia-framework', 'aurelia-rout
                 name: 'planning',
                 moduleId: './planning',
                 nav: false,
-                title: 'Planning',
+                title: this.i18n.tr('planning'),
                 auth: true
             }, {
                 route: ':month',
                 name: 'panel',
                 moduleId: './admin-panel',
                 nav: false,
-                title: 'Timesheet',
+                title: this.i18n.tr('budgetting'),
                 auth: true
             }]);
         };
@@ -3175,7 +3114,7 @@ define('pages/timesheets/timesheet-entry',['exports', 'aurelia-framework', 'aure
         initializer: null
     })), _class2)) || _class);
 });
-define('pages/timesheets/timesheets-router',['exports', 'aurelia-framework', 'aurelia-router'], function (exports, _aureliaFramework, _aureliaRouter) {
+define('pages/timesheets/timesheets-router',['exports', 'aurelia-framework', 'aurelia-router', 'aurelia-i18n'], function (exports, _aureliaFramework, _aureliaRouter, _aureliaI18n) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -3191,35 +3130,36 @@ define('pages/timesheets/timesheets-router',['exports', 'aurelia-framework', 'au
 
     var _dec, _class;
 
-    var TimesheetsRouter = exports.TimesheetsRouter = (_dec = (0, _aureliaFramework.inject)(_aureliaRouter.Router), _dec(_class = function () {
-        function TimesheetsRouter(router) {
+    var TimesheetsRouter = exports.TimesheetsRouter = (_dec = (0, _aureliaFramework.inject)(_aureliaRouter.Router, _aureliaI18n.I18N), _dec(_class = function () {
+        function TimesheetsRouter(router, i18n) {
             _classCallCheck(this, TimesheetsRouter);
 
             this.router = router;
+            this.i18n = i18n;
         }
 
         TimesheetsRouter.prototype.configureRouter = function configureRouter(config) {
 
             config.map([{
                 route: ['/'],
-                name: 'list',
+                name: 'entry',
                 moduleId: './timesheets',
                 nav: false,
-                title: 'List',
+                title: this.i18n.tr('timesheetentry'),
                 auth: true
             }, {
                 route: [':id'],
                 name: 'timesheet',
                 moduleId: './monthly-timesheet',
                 nav: false,
-                title: 'Timesheet',
+                title: this.i18n.tr('monthtimesheet'),
                 auth: true
             }, {
                 route: ':timesheetId/:entryId',
                 name: 'timesheetEntry',
                 moduleId: './timesheet-entry',
                 nav: false,
-                title: 'Timesheet',
+                title: this.i18n.tr('timesheetentry'),
                 auth: true
             }]);
         };
@@ -3313,6 +3253,7 @@ define('pages/timesheets/timesheets',['exports', 'aurelia-framework', 'aurelia-e
 
             this.retrieveData();
 
+            var me = this;
             this.subscriber = this.ea.subscribe('dbsync', function (response) {
                 me.retrieveData();
             });
@@ -4077,45 +4018,6 @@ define('resources/dropdown/dropdown',['exports', 'aurelia-framework', '../../ser
         }
     })), _class2)) || _class) || _class);
 });
-define('resources/flash/animateonchange',['exports', 'aurelia-framework', 'aurelia-animator-css'], function (exports, _aureliaFramework, _aureliaAnimatorCss) {
-    'use strict';
-
-    Object.defineProperty(exports, "__esModule", {
-        value: true
-    });
-    exports.AnimateOnChangeCustomAttribute = undefined;
-
-    function _classCallCheck(instance, Constructor) {
-        if (!(instance instanceof Constructor)) {
-            throw new TypeError("Cannot call a class as a function");
-        }
-    }
-
-    var _dec, _dec2, _class;
-
-    var AnimateOnChangeCustomAttribute = exports.AnimateOnChangeCustomAttribute = (_dec = (0, _aureliaFramework.customAttribute)('animateonchange'), _dec2 = (0, _aureliaFramework.inject)(Element, _aureliaAnimatorCss.CssAnimator), _dec(_class = _dec2(_class = function () {
-        function AnimateOnChangeCustomAttribute(element, animator) {
-            _classCallCheck(this, AnimateOnChangeCustomAttribute);
-
-            this.element = element;
-            this.animator = animator;
-            this.initialValueSet = false;
-        }
-
-        AnimateOnChangeCustomAttribute.prototype.valueChanged = function valueChanged(newValue) {
-            var _this = this;
-
-            if (this.initialValueSet) {
-                this.animator.addClass(this.element, 'background-animation').then(function () {
-                    _this.animator.removeClass(_this.element, 'background-animation');
-                });
-            }
-            this.initialValueSet = true;
-        };
-
-        return AnimateOnChangeCustomAttribute;
-    }()) || _class) || _class);
-});
 define('resources/flash/flash-error-message',['exports', './flash-message'], function (exports, _flashMessage) {
     'use strict';
 
@@ -4454,40 +4356,6 @@ define('resources/formats/month-format',['exports', 'moment'], function (exports
         return MonthFormatValueConverter;
     }();
 });
-define('resources/formats/remote-url',['exports', '../../config/app-settings'], function (exports, _appSettings) {
-    'use strict';
-
-    Object.defineProperty(exports, "__esModule", {
-        value: true
-    });
-    exports.RemoteUrlValueConverter = undefined;
-
-    var _appSettings2 = _interopRequireDefault(_appSettings);
-
-    function _interopRequireDefault(obj) {
-        return obj && obj.__esModule ? obj : {
-            default: obj
-        };
-    }
-
-    function _classCallCheck(instance, Constructor) {
-        if (!(instance instanceof Constructor)) {
-            throw new TypeError("Cannot call a class as a function");
-        }
-    }
-
-    var RemoteUrlValueConverter = exports.RemoteUrlValueConverter = function () {
-        function RemoteUrlValueConverter() {
-            _classCallCheck(this, RemoteUrlValueConverter);
-        }
-
-        RemoteUrlValueConverter.prototype.toView = function toView(value) {
-            return _appSettings2.default.rootUrl + '/' + value;
-        };
-
-        return RemoteUrlValueConverter;
-    }();
-});
 define('resources/formats/tel',['exports'], function (exports) {
     'use strict';
 
@@ -4550,176 +4418,6 @@ define('resources/formats/truncate',['exports'], function (exports) {
 
         return TruncateValueConverter;
     }();
-});
-define('resources/pagination/pagination',["exports"], function (exports) {
-    "use strict";
-
-    Object.defineProperty(exports, "__esModule", {
-        value: true
-    });
-
-    function _classCallCheck(instance, Constructor) {
-        if (!(instance instanceof Constructor)) {
-            throw new TypeError("Cannot call a class as a function");
-        }
-    }
-
-    var Pagination = exports.Pagination = function () {
-        function Pagination(currentPage, itemsPerPage, totalCount, items) {
-            _classCallCheck(this, Pagination);
-
-            this.currentPage = currentPage;
-            this.itemsPerPage = itemsPerPage;
-            this.totalCount = totalCount;
-            this.items = items;
-
-            this.setNumberPages();
-            this.setVisiblePages();
-        }
-
-        Pagination.prototype.setNumberPages = function setNumberPages() {
-            this.numberPages = Math.ceil(this.totalCount / this.itemsPerPage);
-        };
-
-        Pagination.prototype.setVisiblePages = function setVisiblePages() {
-            var _this = this;
-
-            var NBR_START = 2;
-            var NBR_END = 2;
-            var NBR_PAGES = 10;
-            var NBR_DISABLED = 2;
-            var NBR_VISIBLE = 7;
-
-            if (this.numberPages <= NBR_PAGES) {
-                this.visiblePages = this.numberPages;
-                return;
-            }
-
-            this.startPages = NBR_START;
-            this.endPages = Array.apply(null, Array(NBR_END)).map(function (v, i) {
-                return _this.numberPages - i - 1;
-            }).reverse();
-
-            var visibleRangeStart = Math.max(NBR_START, this.currentPage - (NBR_VISIBLE - 1) / 2);
-            var visibleRangeEnd = Math.max(NBR_VISIBLE, this.currentPage + 1 + (NBR_VISIBLE - 1) / 2);
-
-            var nbrVisiblePages = NBR_VISIBLE - NBR_START;
-
-            if (visibleRangeStart > NBR_START) {
-                this.firstDisabledPages = NBR_DISABLED;
-            }
-
-            if (visibleRangeEnd > this.numberPages) {
-                visibleRangeStart = this.numberPages - NBR_VISIBLE;
-            } else {
-                this.lastDisabledPages = NBR_DISABLED;
-            }
-
-            this.visiblePages = Array.apply(null, Array(nbrVisiblePages)).map(function (v, i) {
-                return i + visibleRangeStart;
-            });
-        };
-
-        return Pagination;
-    }();
-});
-define('resources/pagination/paginator',["exports", "aurelia-framework", "aurelia-dialog"], function (exports, _aureliaFramework, _aureliaDialog) {
-    "use strict";
-
-    Object.defineProperty(exports, "__esModule", {
-        value: true
-    });
-    exports.Paginator = undefined;
-
-    function _initDefineProp(target, property, descriptor, context) {
-        if (!descriptor) return;
-        Object.defineProperty(target, property, {
-            enumerable: descriptor.enumerable,
-            configurable: descriptor.configurable,
-            writable: descriptor.writable,
-            value: descriptor.initializer ? descriptor.initializer.call(context) : void 0
-        });
-    }
-
-    function _classCallCheck(instance, Constructor) {
-        if (!(instance instanceof Constructor)) {
-            throw new TypeError("Cannot call a class as a function");
-        }
-    }
-
-    function _applyDecoratedDescriptor(target, property, decorators, descriptor, context) {
-        var desc = {};
-        Object['ke' + 'ys'](descriptor).forEach(function (key) {
-            desc[key] = descriptor[key];
-        });
-        desc.enumerable = !!desc.enumerable;
-        desc.configurable = !!desc.configurable;
-
-        if ('value' in desc || desc.initializer) {
-            desc.writable = true;
-        }
-
-        desc = decorators.slice().reverse().reduce(function (desc, decorator) {
-            return decorator(target, property, desc) || desc;
-        }, desc);
-
-        if (context && desc.initializer !== void 0) {
-            desc.value = desc.initializer ? desc.initializer.call(context) : void 0;
-            desc.initializer = undefined;
-        }
-
-        if (desc.initializer === void 0) {
-            Object['define' + 'Property'](target, property, desc);
-            desc = null;
-        }
-
-        return desc;
-    }
-
-    function _initializerWarningHelper(descriptor, context) {
-        throw new Error('Decorating class property failed. Please ensure that transform-class-properties is enabled.');
-    }
-
-    var _desc, _value, _class, _descriptor, _descriptor2, _descriptor3;
-
-    var Paginator = exports.Paginator = (_class = function () {
-        function Paginator() {
-            _classCallCheck(this, Paginator);
-
-            _initDefineProp(this, "pagination", _descriptor, this);
-
-            _initDefineProp(this, "action", _descriptor2, this);
-
-            _initDefineProp(this, "hasLoadMore", _descriptor3, this);
-        }
-
-        Paginator.prototype.paginate = function paginate(page) {
-            this.action({ params: {
-                    "page": page === undefined ? this.pagination.currentPage : page,
-                    "limit": this.pagination.itemsPerPage
-                } });
-        };
-
-        Paginator.prototype.loadMore = function loadMore() {
-            this.action({ params: {
-                    "page": parseInt(this.pagination.currentPage) + 1,
-                    "limit": this.pagination.itemsPerPage
-                } });
-        };
-
-        return Paginator;
-    }(), (_descriptor = _applyDecoratedDescriptor(_class.prototype, "pagination", [_aureliaFramework.bindable], {
-        enumerable: true,
-        initializer: null
-    }), _descriptor2 = _applyDecoratedDescriptor(_class.prototype, "action", [_aureliaFramework.bindable], {
-        enumerable: true,
-        initializer: function initializer() {
-            return function () {};
-        }
-    }), _descriptor3 = _applyDecoratedDescriptor(_class.prototype, "hasLoadMore", [_aureliaFramework.bindable], {
-        enumerable: true,
-        initializer: null
-    })), _class);
 });
 define('aurelia-templating-resources/compose',['exports', 'aurelia-dependency-injection', 'aurelia-task-queue', 'aurelia-templating', 'aurelia-pal'], function (exports, _aureliaDependencyInjection, _aureliaTaskQueue, _aureliaTemplating, _aureliaPal) {
   'use strict';
@@ -11947,25 +11645,24 @@ define('text!styles/styles.css', ['module'], function(module) { module.exports =
 define('text!components/top-bar.html', ['module'], function(module) { module.exports = "<template bindable=\"router\">\n\n    <confirmation approve-callback></confirmation>\n\n    <div class=\"top-bar ui menu navbar\">\n        <div class=\"left menu\">\n            <div class=\"item\">\n                <i if.bind=\"isSynced\" class=\"green feed icon\"></i>\n                <i if.bind=\"!isSynced\" class=\"red feed icon\"></i>\n                <a \n                    route-href=\"route: error-report\"\n                    if.bind=\"error\"\n                >\n                    <i class=\"red alarm icon\"></i>\n                </a>\n            </div>\n        </div>\n        <div class=\"right menu\">\n\n            <a \n                route-href=\"route: admin-planning\"\n                class=\"item\"\n                if.bind=\"isAdmin\"\n            >\n                <i class=\"calculator icon\"></i>\n            </a>\n\n            <a \n                route-href=\"route: timesheets\"\n                class=\"item\"\n            >\n                <i class=\"add to calendar icon\"></i>\n            </a>\n\n            <a \n                route-href=\"route: planning\"\n                class=\"item\"\n            >\n                <i class=\"calendar icon\"></i>\n            </a>\n\n            <a \n                route-href=\"route: user\"\n                class=\"item\"\n            >\n                <i class=\"user icon\"></i>\n            </a>\n\n            <a href=\"#\" class=\"item\" click.delegate=\"logout()\">\n                 <i class=\"sign out icon\"></i>\n            </a>\n            \n        </div>\n    </div>\n</template>"; });
 define('text!components/user-app-router.html', ['module'], function(module) { module.exports = "<template>\n\n    <require from=\"./top-bar\"></require>\n\n    <top-bar router.bind=\"router\"></top-bar>\n\n    <div class=\"divider\"></div>\n\n    <nav-bar router.bind=\"router\"></nav-bar>\n\n    <div class=\"full height ui grid\">\n        <div class=\"row\">\n            <compose class=\"sixteen wide column\" view-model=\"resources/flash/flash\"></compose>\n        </div>\n\n        <div class=\"row\">\n\n            <div class=\"page-host centered fourteen wide column pusher\">\n                <div class=\"main-panel-container\">\n                    <router-view></router-view>\n                </div>\n            </div>\n\n        </div>\n    </div>\n\n</template>\n"; });
 define('text!pages/admin/admin-panel.html', ['module'], function(module) { module.exports = "<template>\n\n    <require from=\"./users-timesheets\"></require>\n    <require from=\"./admin-reports\"></require>\n\n    <div class=\"ui two item stackable tabs pointing huge admin panel menu\">        \n          <a class=\"active item\" data-tab=\"definition\"><i class=\"checkmark icon\"></i></a>\n          <a class=\"item\" data-tab=\"reports\"><i class=\"pie chart icon\"></i></a>\n    </div>\n\n    <div data-tab=\"definition\" class=\"ui tab segment active\">\n        <users-timesheets\n            month.bind=\"month\"\n        >\n        </users-timesheets>\n    </div>\n    <div data-tab=\"reports\" class=\"ui tab segment\">\n        <admin-reports\n            month.bind=\"month\"\n        >\n        </admin-reports>\n    </div>\n\n</template>"; });
-define('text!pages/admin/admin-report.html', ['module'], function(module) { module.exports = "<template>\n\n    <table class=\"ui celled table\">\n        <thead>\n            <tr>\n                <th t=\"allocation\">Allocation</th>\n                <th t=\"ratio\">Ratio</th>\n                <th t=\"duration\">Duration</th>\n                <th t=\"salary\">Salary (641)</th>\n                <th t=\"charges\">Charges (645)</th>\n                <th t=\"provisionCP\">Prov. (641200)</th>\n                <th t=\"provision-charges\">Prov. Charges (645000)</th>\n                <th t=\"precaritebrut\">Precarite Brut</th>\n                <th t=\"precaritecharges\">Precarite Charges</th>                \n            </tr>\n        </thead>\n        <tbody>\n            <tr repeat.for=\"report of entries\">\n                <td>${report.allocationName}</td>\n                <td>${report.ratio.toFixed(2)}%</td>\n                <td>${report.duration.toFixed(2)}h</td>\n                <td>${report.salary.toFixed(2)}$</td>\n                <td>${report.accounts.charges.toFixed(2)}$</td>\n                <td>${report.accounts.provisionCPBrut.toFixed(2)}${ '$' | t }</td>\n                <td>${report.accounts.provisionCPCharges.toFixed(2)}${ '$' | t }</td>\n                <td>${report.accounts.primePrecariteBrut.toFixed(2)}${ '$' | t }</td>\n                <td>${report.accounts.primePrecariteCharges.toFixed(2)}${ '$' | t }</td>\n            </tr>\n        </tbody>\n        <tfoot>\n            <tr>\n                <th t=\"total\"></th>\n                <th>${ totals.ratio.toFixed(2) }%</th>\n                <th>${ totals.duration.toFixed(2) }h</th>\n                <th>${ totals.salary.toFixed(2) }${ '$' | t }</th>\n                <th>${ totals.accounts.charges.toFixed(2) }${ '$' | t }</th>\n                <th>${ totals.accounts.provisionCPBrut.toFixed(2) }${ '$' | t }</th>\n                <th>${ totals.accounts.provisionCPCharges.toFixed(2) }${ '$' | t }</th>\n                <th>${ totals.accounts.primePrecariteBrut.toFixed(2) }${ '$' | t }</th>\n                <th>${ totals.accounts.primePrecariteCharges.toFixed(2) }${ '$' | t }</th>\n            </tr>\n            <tr>\n                <th t=\"netpayable\"></th>\n                <th>${ totals.accounts.netPayable.toFixed(2) }${ '$' | t }</th>\n            </tr>\n            <tr>\n                <th t=\"ursaff\"></th>\n                <th>${ totals.accounts.ursaff.toFixed(2) }${ '$' | t }</th>\n            </tr>\n            <tr>\n                <th t=\"provisionCP\"></th>\n                <th>${ totals.accounts.provisionCP.toFixed(2) }${ '$' | t }</th>\n            </tr>\n            <tr>\n                <th t=\"provisionprecarite\"></th>\n                <th>${ totals.accounts.provisionPrecarite.toFixed(2) }${ '$' | t }</th>\n            </tr>\n        </tfoot>\n    </table>\n\n</template>"; });
-define('text!pages/admin/admin-reports.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"../../resources/dropdown/dropdown\"></require>\n    <require from=\"./admin-report\"></require>\n    \n    <div class=\"admin reports ui container fluid\">\n\n        <h2>${month}</h2>\n        <div class=\"ui horizontal segments\">       \n            <div class=\"left aligned ui segment\">\n                <dropdown \n                    selected-entry.two-way=\"accountingRuleEndKey\"\n                    route=\"accounting\"\n                    name=\"timesheet:accountingrules\"\n                    required.bind=true\n                    allow-add.bind=false\n                >\n                </dropdown>\n            </div>\n            <div class=\"right aligned ui segment\">\n                <a id=\"csv-export-link\" t=\"download\">Download</a>\n            </div>\n        </div>\n\n        <div class=\"ui grid basic segment\">\n            <div \n                class=\"ui toggle checkbox\"\n                id=\"showMonthAggregate\"\n            >\n                <input\n                    type=\"checkbox\"\n                    name=\"monthaggregate\"\n                >\n                <label t=\"report:showmonthaggregate\">Show month aggregate</label>\n            </div>\n        </div>\n\n        <div \n            class=\"user report\"\n            if.bind=\"!showMonthAggregate\"\n            repeat.for=\"[userName, userReport] of allocationUserReports\"\n        >\n            <h3>${ userName }</h3>\n            <div class=\"right aligned ui segment\">\n                <a \n                    id=\"${userName}-csv-export-link\"\n                    t=\"download\"\n                    data-user=\"${userName}\"\n                >\n                    Download\n                </a>\n            </div>\n\n            <admin-report entries.bind=\"userReport.entries\" totals.bind=\"userReport.totals\"></admin-report>\n            \n        </div>\n\n        <admin-report\n            if.bind=\"showMonthAggregate\"\n            entries.bind=\"allocationReports.entries\"\n            totals.bind=\"allocationReports.totals\"\n        >\n        </admin-report>        \n\n    </div>\n\n</template>"; });
+define('text!pages/admin/admin-report.html', ['module'], function(module) { module.exports = "<template>\n\n    <table class=\"ui celled table\">\n        <thead>\n            <tr>\n                <th t=\"allocation\">Allocation</th>\n                <th t=\"ratio\">Ratio</th>\n                <th t=\"duration\">Duration</th>\n                <th t=\"salary\">Salary (641)</th>\n                <th t=\"charges\">Charges (645)</th>\n                <th t=\"provisionCPbrut\">Prov. (641200)</th>\n                <th t=\"provisionCPcharges\">Prov. Charges (645000)</th>\n                <th t=\"precaritebrut\">Precarite Brut</th>\n                <th t=\"precaritecharges\">Precarite Charges</th>                \n            </tr>\n        </thead>\n        <tbody>\n            <tr repeat.for=\"report of entries\">\n                <td>${report.allocationName}</td>\n                <td>${report.ratio.toFixed(2)}%</td>\n                <td>${report.duration.toFixed(2)}h</td>\n                <td>${report.salary.toFixed(2)}$</td>\n                <td>${report.accounts.charges.toFixed(2)}$</td>\n                <td>${report.accounts.provisionCPBrut.toFixed(2)}${ '$' | t }</td>\n                <td>${report.accounts.provisionCPCharges.toFixed(2)}${ '$' | t }</td>\n                <td>${report.accounts.primePrecariteBrut.toFixed(2)}${ '$' | t }</td>\n                <td>${report.accounts.primePrecariteCharges.toFixed(2)}${ '$' | t }</td>\n            </tr>\n        </tbody>\n        <tfoot>\n            <tr>\n                <th t=\"total\"></th>\n                <th>${ totals.ratio.toFixed(2) }%</th>\n                <th>${ totals.duration.toFixed(2) }h</th>\n                <th>${ totals.salary.toFixed(2) }${ '$' | t }</th>\n                <th>${ totals.accounts.charges.toFixed(2) }${ '$' | t }</th>\n                <th>${ totals.accounts.provisionCPBrut.toFixed(2) }${ '$' | t }</th>\n                <th>${ totals.accounts.provisionCPCharges.toFixed(2) }${ '$' | t }</th>\n                <th>${ totals.accounts.primePrecariteBrut.toFixed(2) }${ '$' | t }</th>\n                <th>${ totals.accounts.primePrecariteCharges.toFixed(2) }${ '$' | t }</th>\n            </tr>\n            <tr>\n                <th t=\"netpayable\"></th>\n                <th>${ totals.accounts.netPayable.toFixed(2) }${ '$' | t }</th>\n            </tr>\n            <tr>\n                <th t=\"urssaf\"></th>\n                <th>${ totals.accounts.urssaf.toFixed(2) }${ '$' | t }</th>\n            </tr>\n            <tr>\n                <th t=\"provisionCPbrut\"></th>\n                <th>${ totals.accounts.provisionCP.toFixed(2) }${ '$' | t }</th>\n            </tr>\n            <tr>\n                <th t=\"provisionprecarite\"></th>\n                <th>${ totals.accounts.provisionPrecarite.toFixed(2) }${ '$' | t }</th>\n            </tr>\n        </tfoot>\n    </table>\n\n</template>"; });
+define('text!pages/admin/admin-reports.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"../../resources/dropdown/dropdown\"></require>\n    <require from=\"./admin-report\"></require>\n    \n    <div class=\"admin reports ui container fluid\">\n\n        <h2>${month}</h2>\n        <div class=\"ui horizontal segments\">       \n            <div class=\"left aligned ui segment\">\n                <dropdown \n                    selected-entry.two-way=\"accountingRuleEndKey\"\n                    route=\"accounting\"\n                    name=\"accountingrules\"\n                    required.bind=true\n                    allow-add.bind=false\n                >\n                </dropdown>\n            </div>\n            <div class=\"right aligned ui segment\">\n                <a id=\"csv-export-link\" t=\"download\">Download</a>\n            </div>\n        </div>\n\n        <div class=\"ui grid basic segment\">\n            <div \n                class=\"ui toggle checkbox\"\n                id=\"showMonthAggregate\"\n            >\n                <input\n                    type=\"checkbox\"\n                    name=\"monthaggregate\"\n                >\n                <label t=\"showmonthaggregate\">Show month aggregate</label>\n            </div>\n        </div>\n\n        <div \n            class=\"user report\"\n            if.bind=\"!showMonthAggregate\"\n            repeat.for=\"[userName, userReport] of allocationUserReports\"\n        >\n            <h3>${ userName }</h3>\n            <div class=\"right aligned ui segment\">\n                <a \n                    id=\"${userName}-csv-export-link\"\n                    t=\"download\"\n                    data-user=\"${userName}\"\n                >\n                    Download\n                </a>\n            </div>\n\n            <admin-report entries.bind=\"userReport.entries\" totals.bind=\"userReport.totals\"></admin-report>\n            \n        </div>\n\n        <admin-report\n            if.bind=\"showMonthAggregate\"\n            entries.bind=\"allocationReports.entries\"\n            totals.bind=\"allocationReports.totals\"\n        >\n        </admin-report>        \n\n    </div>\n\n</template>"; });
 define('text!pages/admin/admin-router.html', ['module'], function(module) { module.exports = "<template>\n    <router-view></router-view>\n</template>"; });
 define('text!pages/admin/planning.html', ['module'], function(module) { module.exports = "<template>\n\n    <div \n        class=\"ui calendar\"\n        data-property=\"date\"\n    >\n        <div class=\"ui input left icon\">\n            <input\n                class=\"\"\n                type=\"hidden\"\n            />\n        </div>\n    </div>      \n\n</template>"; });
-define('text!pages/admin/user-timesheet.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"../../resources/formats/date-format\"></require>\n    <require from=\"../../resources/formats/truncate\"></require>\n\n    <require from=\"../../resources/dropdown/dropdown\"></require>\n\n    <div class=\"username\"><h2>${ userName }</h2></div>\n    \n    <div class=\"${ userName } ui middle aligned segment\">\n        <form\n            class=\"ui form\"\n            validation-renderer=\"semantic-form\"\n            validation-errors.bind=\"errors\"\n        >\n            <div class=\"three fields\">\n                <div class=\"salary inline four wide field\">\n                    <label>${ 'salary' | t}:</label>\n                    <input type=\"text\" value.bind=\"timesheet.salary & validate\"/>\n                </div>\n                <div class=\"precarite ui checkbox inline four wide field\">\n                    <label>${ 'precarite' | t}?</label>\n                    <input type=\"checkbox\" value.bind=\"timesheet.precarite & validate\"/>\n                </div>\n                <div class=\"inline middle aligned four wide field\">\n                    <button\n                        class=\"ui small primary button\"\n                        tabindex=\"0\"\n                        t=\"save\"\n                        click.delegate=\"saveTimesheet(userName)\"\n                    >\n                        Save\n                    </button>    \n                </div>\n            </div>\n        </form>\n    </div>\n    \n    <form\n        class=\"ui user timesheet form\"\n        validation-renderer=\"semantic-form\"\n        validation-errors.bind=\"errors\"\n    >\n\n        <table class=\"ui striped fixed monthly timesheet table\">\n            <thead>\n                <tr>\n                    <th t=\"date\">Date</th>\n                    <th t=\"purpose\">Purpose</th>\n                    <th t=\"duration\">Duration</th>\n                    <th t=\"description\">Observation</th>\n                    <th t=\"allocation\">Allocation</th>\n                </tr>\n            </thead>\n            <tbody>\n                <tr\n                    repeat.for=\"entity of timesheet.entries\"\n                    click.delegate=\"openEntry(entity.id)\"\n                    if.bind=\"entity.allocation === undefined || entity.allocation === null || !unallocatedOnly\"\n                >\n                    <td>${ entity.date | dateFormat }</td>\n                    <td>${ purposes.get(entity.purpose) }</td>\n                    <td>${ entity.duration }${ 'h' | t }</td>\n                    <td>${ entity.observation | truncate: 40 }</td>\n                    <td onclick=\"event.stopPropagation();\" style=\"overflow:visible;\">\n                        <dropdown \n                            selected-entry.two-way=\"entity.allocation\"\n                            route=\"allocation\"\n                            name=\"timesheet:allocation\"\n                            required.bind=false\n                            allow-add.bind=true\n                            select-action.call=\"allocationSelected(dropdown)\"\n                            add-action.call=\"allocationAdded(dropdown)\"\n                            data-username=\"${username}\"\n                            data-entryid=\"${entity.id}\"\n                        >\n                        </dropdown>\n                    </td>\n                </tr>\n            </tbody>\n        </table>\n\n    </form>\n\n</template>"; });
-define('text!pages/admin/users-timesheets.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"./user-timesheet\"></require>\n\n    <div class=\"ui grid basic segment\">\n        <div \n            class=\"ui toggle checkbox\"\n            id=\"showAll\"\n        >\n            <input\n                type=\"checkbox\"\n                name=\"allentries\"\n            >\n            <label t=\"timesheet:showallentries\">Show all entries</label>\n        </div>\n    </div>\n\n\n    <div \n        repeat.for=\"[username, timesheet] of timesheets\"\n        class=\"user timesheet\"\n    >\n        <user-timesheet\n            class=\"\"\n            save-action.call=\"saveEntry(entity)\"\n            timesheet.bind=\"timesheet\"\n            user-name.bind=\"username\"\n            purposes.bind=\"purposes\"\n            unallocated-only.bind=\"unallocatedOnly\"\n            accounting-rules.bind=\"accountingRules\"\n        >\n        </user-timesheet>\n\n    </div>\n\n</template>"; });
-define('text!pages/timesheets/monthly-timesheet.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"../../resources/formats/date-format\"></require>\n    <require from=\"../../resources/formats/truncate\"></require>\n\n    <table class=\"ui striped fixed monthly timesheet table\">\n        <thead>\n            <tr>\n                <th t=\"date\">Date</th>\n                <th t=\"purpose\">Purpose</th>\n                <th t=\"duration\">Duration</th>\n                <th t=\"interpret\">Interpret</th>\n                <th t=\"interpret-time\">Time</th>\n                <th t=\"description\">Observation</th>\n                <th t=\"travel\">Travel</th>\n            </tr>\n        </thead>\n        <tbody>\n            <tr repeat.for=\"entity of entity.entries\" click.delegate=\"openEntry(entity.id)\">\n                <td>${ entity.date | dateFormat }</td>\n                <td>${ purposes.get(entity.purpose) }</td>\n                <td>${ entity.duration }${ 'h' | t }</td>\n                <td>${ interprets.get(entity.interpret) }</td>\n                <td>${ entity.interpret_duration }${ 'h' }</td>\n                <td>${ entity.observation | truncate: 40 }</td>\n                <td>${ entity.travel | truncate: 40 }</td>\n            </tr>\n        </tbody>\n    </table>\n\n</template>"; });
+define('text!pages/admin/user-timesheet.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"../../resources/formats/date-format\"></require>\n    <require from=\"../../resources/formats/truncate\"></require>\n\n    <require from=\"../../resources/dropdown/dropdown\"></require>\n\n    <div class=\"username\"><h2>${ userName }</h2></div>\n    \n    <div class=\"${ userName } ui middle aligned segment\">\n        <form\n            class=\"ui form\"\n            validation-renderer=\"semantic-form\"\n            validation-errors.bind=\"errors\"\n        >\n            <div class=\"three fields\">\n                <div class=\"salary inline four wide field\">\n                    <label>${ 'salary' | t}:</label>\n                    <input type=\"text\" value.bind=\"timesheet.salary & validate\"/>\n                </div>\n                <div class=\"precarite ui checkbox inline four wide field\">\n                    <label>${ 'precarite' | t}?</label>\n                    <input type=\"checkbox\" value.bind=\"timesheet.precarite & validate\"/>\n                </div>\n                <div class=\"inline middle aligned four wide field\">\n                    <button\n                        class=\"ui small primary button\"\n                        tabindex=\"0\"\n                        t=\"save\"\n                        click.delegate=\"saveTimesheet(userName)\"\n                    >\n                        Save\n                    </button>    \n                </div>\n            </div>\n        </form>\n    </div>\n    \n    <form\n        class=\"ui user timesheet form\"\n        validation-renderer=\"semantic-form\"\n        validation-errors.bind=\"errors\"\n    >\n\n        <table class=\"ui striped fixed monthly timesheet table\">\n            <thead>\n                <tr>\n                    <th t=\"date\">Date</th>\n                    <th t=\"purpose\">Purpose</th>\n                    <th t=\"duration\">Duration</th>\n                    <th t=\"observation\">Observation</th>\n                    <th t=\"allocation\">Allocation</th>\n                </tr>\n            </thead>\n            <tbody>\n                <tr\n                    repeat.for=\"entity of timesheet.entries\"\n                    click.delegate=\"openEntry(entity.id)\"\n                    if.bind=\"entity.allocation === undefined || entity.allocation === null || !unallocatedOnly\"\n                >\n                    <td>${ entity.date | dateFormat }</td>\n                    <td>${ purposes.get(entity.purpose) }</td>\n                    <td>${ entity.duration }${ 'h' | t }</td>\n                    <td>${ entity.observation | truncate: 40 }</td>\n                    <td onclick=\"event.stopPropagation();\" style=\"overflow:visible;\">\n                        <dropdown \n                            selected-entry.two-way=\"entity.allocation\"\n                            route=\"allocation\"\n                            name=\"allocation\"\n                            required.bind=false\n                            allow-add.bind=true\n                            select-action.call=\"allocationSelected(dropdown)\"\n                            add-action.call=\"allocationAdded(dropdown)\"\n                            data-username=\"${username}\"\n                            data-entryid=\"${entity.id}\"\n                        >\n                        </dropdown>\n                    </td>\n                </tr>\n            </tbody>\n        </table>\n\n    </form>\n\n</template>"; });
+define('text!pages/admin/users-timesheets.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"./user-timesheet\"></require>\n\n    <div class=\"ui grid basic segment\">\n        <div \n            class=\"ui toggle checkbox\"\n            id=\"showAll\"\n        >\n            <input\n                type=\"checkbox\"\n                name=\"allentries\"\n            >\n            <label t=\"showallentries\">Show all entries</label>\n        </div>\n    </div>\n\n\n    <div \n        repeat.for=\"[username, timesheet] of timesheets\"\n        class=\"user timesheet\"\n    >\n        <user-timesheet\n            class=\"\"\n            save-action.call=\"saveEntry(entity)\"\n            timesheet.bind=\"timesheet\"\n            user-name.bind=\"username\"\n            purposes.bind=\"purposes\"\n            unallocated-only.bind=\"unallocatedOnly\"\n            accounting-rules.bind=\"accountingRules\"\n        >\n        </user-timesheet>\n\n    </div>\n\n</template>"; });
+define('text!pages/timesheets/monthly-timesheet.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"../../resources/formats/date-format\"></require>\n    <require from=\"../../resources/formats/truncate\"></require>\n\n    <table class=\"ui striped fixed monthly timesheet table\">\n        <thead>\n            <tr>\n                <th t=\"date\">Date</th>\n                <th t=\"purpose\">Purpose</th>\n                <th t=\"duration\">Duration</th>\n                <th t=\"interpret\">Interpret</th>\n                <th t=\"interpret-time\">Time</th>\n                <th t=\"observation\">Observation</th>\n                <th t=\"travel\">Travel</th>\n            </tr>\n        </thead>\n        <tbody>\n            <tr repeat.for=\"entity of entity.entries\" click.delegate=\"openEntry(entity.id)\">\n                <td>${ entity.date | dateFormat }</td>\n                <td>${ purposes.get(entity.purpose) }</td>\n                <td>${ entity.duration }${ 'h' | t }</td>\n                <td>${ interprets.get(entity.interpret) }</td>\n                <td>${ entity.interpret_duration }${ 'h' }</td>\n                <td>${ entity.observation | truncate: 40 }</td>\n                <td>${ entity.travel | truncate: 40 }</td>\n            </tr>\n        </tbody>\n    </table>\n\n</template>"; });
 define('text!pages/timesheets/planning-router.html', ['module'], function(module) { module.exports = "<template>\n    <router-view></router-view>\n</template>"; });
 define('text!pages/timesheets/planning.html', ['module'], function(module) { module.exports = "<template>\n\n    <div \n        class=\"ui calendar\"\n        data-property=\"date\"\n    >\n        <div class=\"ui input left icon\">\n            <input\n                class=\"\"\n                type=\"hidden\"\n            />\n        </div>\n    </div>      \n\n</template>"; });
-define('text!pages/timesheets/timesheet-entry.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"../../resources/dropdown/dropdown\"></require>\n\n    <form\n        class=\"ui timesheet-entry form\"\n        validation-renderer=\"semantic-form\"\n        validation-errors.bind=\"errors\"\n    >\n        \n        <div class=\"two fields\">\n\n            <div class=\"two fields\">\n\n                <div class=\"field\">\n                    <label t=\"date\">Date</label>\n                    <div \n                        class=\"date ui calendar\"\n                        data-property=\"date\"\n                    >\n                        <div class=\"ui input left icon\">\n                            <i class=\"calendar icon\"></i>\n                            <input\n                                class=\"\"\n                                type=\"text\"\n                                t=\"[placeholder]timesheet:date\"\n                                value.bind=\"dateInput & validate\"\n                            />\n                        </div>\n                    </div>      \n                </div>\n\n                <div class=\"field\">\n                    <label t=\"purpose\">Purpose</label>\n                    <dropdown \n                        selected-entry.two-way=\"entity.purpose & validate\"\n                        route=\"purpose\"\n                        name=\"timesheet:purpose\"\n                        required.bind=true\n                        allow-add.bind=true\n                    >\n                    </dropdown>                \n                </div>\n\n            </div>\n\n            <div class=\"field\">\n                <label t=\"time\">Time Spent</label>\n                <div class=\"two hours fields\">\n                    <div class=\"inline field\">\n                        <input\n                            class=\"short integer input\"\n                            id=\"HoursInput\"\n                            type=\"text\"\n                            t=\"[placeholder]timesheet:hours\"\n                            value.bind=\"entity.hours & validate\"\n                        />\n                        <label class=\"ui right floated\" t=\"timesheet:hours\">hours</label>\n                    </div>\n                    <div class=\"inline field\">\n                        <input\n                            class=\"short integer input\"\n                            type=\"text\"\n                            t=\"[placeholder]timesheet:minutes\"\n                            value.bind=\"entity.minutes & validate\"\n                        />\n                        <label class=\"ui right floated\" t=\"timesheet:minutes\">minutes</label>\n                    </div>\n                </div>\n            </div>\n        \n        </div>\n\n        <div class=\"two fields\">\n\n            <div class=\"field\">\n                <label t=\"interpret\">Interpret</label>\n                <dropdown \n                    selected-entry.two-way=\"entity.interpret & validate\"\n                    route=\"interpret\"\n                    name=\"timesheet:interpret\"\n                    required.bind=false\n                    allow-add.bind=true\n                >\n                </dropdown>\n            </div>\n\n            <div class=\"field\">\n                <label t=\"interpret-time\">Time for interpret</label>\n                <div class=\"two hours fields\">\n                    <div class=\"inline field\">\n                        <input\n                            class=\"\"\n                            type=\"text\"\n                            t=\"[placeholder]timesheet:hours\"\n                            value.bind=\"entity.interpret_hours & validate\"\n                        />\n                        <label class=\"ui right floated\" t=\"timesheet:hours\">hours</label>\n                    </div>\n                    <div class=\"inline field\">\n                        <input\n                            class=\"\"\n                            type=\"text\"\n                            t=\"[placeholder]timesheet:minutes\"\n                            value.bind=\"entity.interpret_minutes & validate\"\n                        />\n                        <label class=\"ui right floated\" t=\"timesheet:minutes\">minutes</label>\n                    </div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"field\">\n            <label t=\"observation\">Observation</label>\n            <textarea\n                class=\"\"\n                rows=\"2\"\n                t=\"[placeholder]timesheet:observation\"\n                value.bind=\"entity.observation & validate\"\n            >\n            </textarea>\n        </div>\n\n        <div class=\"field\">\n            <label t=\"travel\">Travel</label>\n            <textarea\n                class=\"\"\n                rows=\"2\"\n                t=\"[placeholder]timesheet:travel\"\n                value.bind=\"entity.travel & validate\"\n            >\n            </textarea>\n        </div>        \n\n    </form>\n\n    <button\n        class=\"ui primary fluid button\"\n        tabindex=\"0\"\n        t=\"save\"\n        if.bind=\"isEditable\"\n        click.trigger=\"doSave($event)\"\n    >\n        Save\n    </button>\n    \n</template>"; });
+define('text!pages/timesheets/timesheet-entry.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"../../resources/dropdown/dropdown\"></require>\n\n    <form\n        class=\"ui timesheet-entry form\"\n        validation-renderer=\"semantic-form\"\n        validation-errors.bind=\"errors\"\n    >\n        \n        <div class=\"two fields\">\n\n            <div class=\"two fields\">\n\n                <div class=\"field\">\n                    <label t=\"date\">Date</label>\n                    <div \n                        class=\"date ui calendar\"\n                        data-property=\"date\"\n                    >\n                        <div class=\"ui input left icon\">\n                            <i class=\"calendar icon\"></i>\n                            <input\n                                class=\"\"\n                                type=\"text\"\n                                t=\"[placeholder]date\"\n                                value.bind=\"dateInput & validate\"\n                            />\n                        </div>\n                    </div>      \n                </div>\n\n                <div class=\"field\">\n                    <label t=\"purpose\">Purpose</label>\n                    <dropdown \n                        selected-entry.two-way=\"entity.purpose & validate\"\n                        route=\"purpose\"\n                        name=\"purpose\"\n                        required.bind=true\n                        allow-add.bind=true\n                    >\n                    </dropdown>                \n                </div>\n\n            </div>\n\n            <div class=\"field\">\n                <label t=\"time\">Time Spent</label>\n                <div class=\"two hours fields\">\n                    <div class=\"inline field\">\n                        <input\n                            class=\"short integer input\"\n                            id=\"HoursInput\"\n                            type=\"text\"\n                            t=\"[placeholder]hours\"\n                            value.bind=\"entity.hours & validate\"\n                        />\n                        <label class=\"ui right floated\" t=\"hours\">hours</label>\n                    </div>\n                    <div class=\"inline field\">\n                        <input\n                            class=\"short integer input\"\n                            type=\"text\"\n                            t=\"[placeholder]minutes\"\n                            value.bind=\"entity.minutes & validate\"\n                        />\n                        <label class=\"ui right floated\" t=\"minutes\">minutes</label>\n                    </div>\n                </div>\n            </div>\n        \n        </div>\n\n        <div class=\"two fields\">\n\n            <div class=\"field\">\n                <label t=\"interpret\">Interpret</label>\n                <dropdown \n                    selected-entry.two-way=\"entity.interpret & validate\"\n                    route=\"interpret\"\n                    name=\"interpret\"\n                    required.bind=false\n                    allow-add.bind=true\n                >\n                </dropdown>\n            </div>\n\n            <div class=\"field\">\n                <label t=\"interpret-time\">Time for interpret</label>\n                <div class=\"two hours fields\">\n                    <div class=\"inline field\">\n                        <input\n                            class=\"\"\n                            type=\"text\"\n                            t=\"[placeholder]hours\"\n                            value.bind=\"entity.interpret_hours & validate\"\n                        />\n                        <label class=\"ui right floated\" t=\"hours\">hours</label>\n                    </div>\n                    <div class=\"inline field\">\n                        <input\n                            class=\"\"\n                            type=\"text\"\n                            t=\"[placeholder]minutes\"\n                            value.bind=\"entity.interpret_minutes & validate\"\n                        />\n                        <label class=\"ui right floated\" t=\"minutes\">minutes</label>\n                    </div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"field\">\n            <label t=\"observation\">Observation</label>\n            <textarea\n                class=\"\"\n                rows=\"2\"\n                t=\"[placeholder]observation\"\n                value.bind=\"entity.observation & validate\"\n            >\n            </textarea>\n        </div>\n\n        <div class=\"field\">\n            <label t=\"travel\">Travel</label>\n            <textarea\n                class=\"\"\n                rows=\"2\"\n                t=\"[placeholder]travel\"\n                value.bind=\"entity.travel & validate\"\n            >\n            </textarea>\n        </div>        \n\n    </form>\n\n    <button\n        class=\"ui primary fluid button\"\n        tabindex=\"0\"\n        t=\"save\"\n        if.bind=\"isEditable\"\n        click.trigger=\"doSave($event)\"\n    >\n        Save\n    </button>\n    \n</template>"; });
 define('text!pages/timesheets/timesheets-router.html', ['module'], function(module) { module.exports = "<template>\n    <router-view></router-view>\n</template>"; });
 define('text!pages/timesheets/timesheets.html', ['module'], function(module) { module.exports = "<template>\n\n    <require from=\"./timesheet-entry\"></require>\n    <require from=\"../../resources/formats/date-format\"></require>\n    <require from=\"../../resources/formats/limit-to-value\"></require>\n\n    <confirmation approve-callback></confirmation>\n\n    <div class=\"ui timesheets\">\n\n        <div class=\"ui centered fluid new timesheet\">\n            <div class=\"content\">\n                <div class=\"ui sixteen wide column grid\">\n                    <div class=\"centered row\">\n                        <timesheet-entry\n                            class=\"\"\n                            create.bind=\"true\"\n                            save-action.call=\"saveEntry(entity)\"\n                        >\n                        </timesheet-entry>\n                    </div>\n\n                    <div class=\"centered row\">\n                        <div class=\"ui styled fluid accordion entries\">\n                            <template repeat.for=\"entity of lastTimesheet.doc.entries | limitTo: 5\">\n                                <div class=\"title\">\n                                    <i class=\"dropdown icon\"></i>\n                                    ${ entity.date  | dateFormat } - \n                                    ${ entity.hours }${ 'h' | t }${ entity.minutes }${ 'mn' | t } -\n                                    ${ purposes.get(entity.purpose) }\n                                </div>\n                                <div class=\"content\">\n                                    <timesheet-entry\n                                        class=\"\"\n                                        create.bind=\"false\"\n                                        save-action.call=\"saveEntry(entity)\"\n                                        entity.bind=\"entity\"\n                                    >\n                                    </timesheet-entry>\n                                </div>\n                            </template>\n                        </div>\n                            \n                    </div>                    \n                </div>\n            </div>\n        </div>\n\n    </div>\n\n</template>"; });
 define('text!pages/user/logged-redirect.html', ['module'], function(module) { module.exports = "<template>\n</template>"; });
-define('text!pages/user/login.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"semantic/semantic.css\"></require>\n    <div class=\"ui login middle aligned center aligned grid\">\n        <div class=\"column\">\n            <h2 class=\"ui teal image header\">\n            <div class=\"content\" t=\"loginmessage\">\n                Log-in to your account\n            </div>\n            </h2>\n            <form class=\"ui large form\">\n            <div class=\"ui stacked segment\">\n                <div class=\"field\">\n                <div class=\"ui left icon input\">\n                    <i class=\"user icon\"></i>\n                    <input type=\"text\" name=\"username\" placeholder=\"${ 'username' | t }\" value.bind=\"username\">\n                </div>\n                </div>\n                <div class=\"field\">\n                <div class=\"ui left icon input\">\n                    <i class=\"lock icon\"></i>\n                    <input type=\"password\" name=\"password\" placeholder=\"${ 'password' | t }\" value.bind=\"password\">\n                </div>\n                </div>\n                <button \n                    class=\"ui fluid large teal submit button\"\n                    t=\"login\"\n                    click.delegate=\"login()\"\n                >\n                Login\n                </button>\n            </div>\n\n            <div class=\"ui login error message\">\n                ${ loginError }\n            </div>\n\n            </form>\n\n            <div class=\"ui message\" t=\"[html]nologin_message\">\n                ${ 'nologin_message'| t } <a href=\"mailto:${ settings.contact }\">${ settings.contact }</a>\n            </div>\n            \n        </div>\n    </div>\n</template>\n"; });
+define('text!pages/user/login.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"semantic/semantic.css\"></require>\n    <div class=\"ui login middle aligned center aligned grid\">\n        <div class=\"column\">\n            <h2 class=\"ui teal image header\">\n            <div class=\"content\" t=\"loginmessage\">\n                Log-in to your account\n            </div>\n            </h2>\n            <form class=\"ui large form\">\n            <div class=\"ui stacked segment\">\n                <div class=\"field\">\n                <div class=\"ui left icon input\">\n                    <i class=\"user icon\"></i>\n                    <input type=\"text\" name=\"username\" placeholder=\"${ 'username' | t }\" value.bind=\"username\">\n                </div>\n                </div>\n                <div class=\"field\">\n                <div class=\"ui left icon input\">\n                    <i class=\"lock icon\"></i>\n                    <input type=\"password\" name=\"password\" placeholder=\"${ 'password' | t }\" value.bind=\"password\">\n                </div>\n                </div>\n                <button \n                    class=\"ui fluid large teal submit button\"\n                    t=\"login\"\n                    click.delegate=\"login()\"\n                >\n                Login\n                </button>\n            </div>\n\n            <div class=\"ui login error message\">\n                ${ loginError }\n            </div>\n\n            </form>\n\n        </div>\n    </div>\n</template>\n"; });
 define('text!pages/user/password.html', ['module'], function(module) { module.exports = "<template>\n\n    <require from=\"../../resources/dropdown/dropdown\"></require>\n    \n    <form\n        class=\"ui form\"\n        validation-renderer=\"semantic-form\"\n        validation-errors.bind=\"errors\"\n    >\n\n        <div class=\"ui grid\">\n            <div class=\"thirteen wide column\">\n                <div class=\"field\">\n                    <label t=\"user:currentpassword\">Current Password</label>\n                    <input\n                        type=\"password\"\n                        value.bind=\"form.current_password & validate:rules\"\n                        t=\"[placeholder]user:currentpassword\"\n                    />\n                </div>            \n                <div class=\"field\">\n                    <label t=\"user:newpassword\">New Password</label>\n                    <input\n                        type=\"password\"\n                        value.bind=\"form.plain_password.first & validate:newrules\"\n                        t=\"[placeholder]user:newpassword\"\n                    />\n                </div>            \n                <div class=\"field\">\n                    <label t=\"user:repeatpassword\">Repeat Password</label>\n                    <input\n                        type=\"password\"\n                        value.bind=\"form.plain_password.second & validate:newrules\"\n                        t=\"[placeholder]user:repeatpassword\"\n                    />\n                </div>            \n\n                <button\n                    class=\"ui primary large submit button\"\n                    tabindex=\"0\"\n                    t=\"save\"\n                    click.trigger=\"save($event)\"\n                >\n                    Save\n                </button>              \n\n            </div>\n        </div>\n\n    </form>\n    \n</template>"; });
 define('text!pages/user/user-router.html', ['module'], function(module) { module.exports = "<template>\n\n    <div class=\"ui grid user router\">\n\n        <div class=\"four wide column\">\n\n            <nav class=\"ui visible sticky vertical labeled icon menu\" role=\"navigation\">\n            <a \n                repeat.for=\"row of router.navigation\" \n                class=\"\n                ${row.isActive ? 'active' : ''} teal item menu\n                \"\n                href.bind=\"row.href\"\n            >\n                <desktop t=\"${row.title}\">\n                </desktop>\n                <i \n                class=\"\n                    ${row.settings.icon} icon\n                \"\n                >\n                </i>\n            </a>\n            </nav>\n        </div>\n    \n        <div class=\"twelve wide column\">\n            <router-view></router-view>\n        </div>\n\n    </div>\n\n</template>"; });
 define('text!resources/confirmation/confirmation.html', ['module'], function(module) { module.exports = "<template>\n\n    <div tabindex=\"-1\" role=\"dialog\" class=\"ui small modal confirmation modal-dialog\">\n        <div class=\"header\" t=\"confirmation\">Confirmation</div>\n        <div class=\"content\">\n            <p>${message | t}</p>\n        </div>\n        <div class=\"actions\">\n            <div \n                class=\"ui cancel negative button\"\n                click.trigger=\"dialogController.cancel()\"\n                t=\"no\"\n            >\n                No\n            </div>\n            <div \n                class=\"ui positive approve right labeled icon button\"\n                click.trigger=\"dialogController.ok()\"\n            >\n                ${ 'yes' | t}\n                <i class=\"checkmark icon\"></i>\n            </div>\n        </div>\n    </div>\n    \n</template>"; });
 define('text!resources/confirmation/delete-button.html', ['module'], function(module) { module.exports = "<template>\n    <a \n        class=\"negative ui\"\n        click.trigger=\"do($event)\"\n    >\n        <i class=\"trash icon\"></i>\n    </a>\n</template>"; });
 define('text!resources/dropdown/dropdown.html', ['module'], function(module) { module.exports = "<template>\n\n    <div\n        class=\"ui fluid dropdown search selection ${multiple === true?'multiple':''}\"\n        tabindex=\"0\"\n    >\n        <input\n            if.bind=\"!multiple\"\n            type=\"hidden\"\n            name.bind=\"name\"\n            value.bind=\"selectedEntry\"\n        />\n\n        <select\n            if.bind=\"multiple === true\"\n            name.bind=\"name\"\n            multiple=\"\"\n        >        \n            <option if.bind=\"!required && !multiple\" t=\"All\" data-value=\"\" value=\"\">All</option>\n            <option\n                repeat.for=\"entry of entries\"\n                value=\"${entry.id}\"\n            >\n                ${entry.doc.name}\n            </option>\n        </select>\n        \n        <i class=\"dropdown icon\"></i>\n        <div \n            class=\"\n                ${selectedEntry?'':'default'}\n                text\n            \"\n            t=\"${name}\"\n            data-default=\"${name|t}\"\n            innerHTML.bind=\"selectedEntryName\"\n        >\n            Entry\n        </div>\n        <div class=\"menu transition\" tabindex=\"-1\">\n            <div if.bind=\"!required && !multiple\" class=\"item\" t=\"All\" data-value=\"\">All</div>\n            <div\n                repeat.for=\"entry of entries\"\n                data-value=\"${entry.id}\"\n                class=\"\n                    item\n                    ${selectedEntry == entry.id ? 'active selected':''}\n                \"\n            >\n                ${entry.doc.name}\n            </div>\n        </div>        \n    </div>\n\n</template>"; });
 define('text!resources/flash/flash.html', ['module'], function(module) { module.exports = "<template>\n    <div class=\"one flash item\">\n        <div \n            class=\"ui message\"\n        >\n            ${ message }\n        </div>\n    </div>\n</template>"; });
-define('text!resources/pagination/paginator.html', ['module'], function(module) { module.exports = "<template>\n    <div \n        if.bind=\"pagination.numberPages > 1 && hasLoadMore\"\n        class=\"pagination more\"\n    >\n        <button \n            class=\"fluid ui primary basic button\"\n            click.delegate=\"loadMore()\"\n            t=\"paginate.more\"\n        >\n        </button>\n    </div>\n\n    <div if.bind=\"!hasLoadMore\">\n\n        <div \n            if.bind=\"pagination.numberPages > 1\"\n            class=\"ui stackable pagination menu\"\n        >\n            <a \n                repeat.for=\"i of pagination.startPages\"\n                class=\"\n                    ${i+1 === pagination.currentPage ? 'active' : ''}\n                    item\n                \"\n                click.delegate=\"paginate(i+1)\"\n            >\n                ${i+1}\n            </a>     \n            <div\n                repeat.for=\"i of pagination.firstDisabledPages\" \n                class=\"disabled item\">\n                ...\n            </div>\n            <a \n                repeat.for=\"i of pagination.visiblePages\"\n                class=\"\n                    ${i+1 === pagination.currentPage ? 'active' : ''}\n                    item\n                \"\n                click.delegate=\"paginate(i+1)\"\n            >\n                ${i+1}\n            </a>\n            <div\n                repeat.for=\"i of pagination.lastDisabledPages\" \n                class=\"disabled item\">\n                ...\n            </div>\n            <a \n                repeat.for=\"i of pagination.endPages\"\n                class=\"\n                    ${i+1 === pagination.currentPage ? 'active' : ''}\n                    item\n                \"\n                click.delegate=\"paginate(i+1)\"\n            >\n                ${i+1}\n            </a> \n        </div>\n        <div class=\"ui pagination action input pages\">\n            <input\n                type=\"text\"\n                value.bind=\"pagination.itemsPerPage\"\n            >\n            <div \n                class=\"ui button\"\n                click.delegate=\"paginate()\"\n                t=\"paginate.go\"\n            >\n                Go\n            </div>\n        </div>\n    </div>\n\n</template>"; });
 //# sourceMappingURL=app-bundle.js.map

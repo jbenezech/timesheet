@@ -1,11 +1,13 @@
 import { inject } from 'aurelia-framework';
 import { Router } from 'aurelia-router';
+import { I18N } from 'aurelia-i18n';
 
-@inject(Router)
+@inject(Router, I18N)
 export class TimesheetsRouter {
 
-    constructor(router) {
+    constructor(router, i18n) {
         this.router = router;
+        this.i18n = i18n;
     }
 
     configureRouter(config) {
@@ -13,10 +15,10 @@ export class TimesheetsRouter {
         config.map([
             { 
                 route: ['/'],
-                name: 'list',
+                name: 'entry',
                 moduleId: './timesheets',
                 nav: false,
-                title: 'List',
+                title: this.i18n.tr('timesheetentry'),
                 auth: true
             },
             { 
@@ -24,7 +26,7 @@ export class TimesheetsRouter {
                 name: 'timesheet',
                 moduleId: './monthly-timesheet',
                 nav: false,
-                title: 'Timesheet',
+                title: this.i18n.tr('monthtimesheet'),
                 auth: true
             },
             { 
@@ -32,7 +34,7 @@ export class TimesheetsRouter {
                 name: 'timesheetEntry',
                 moduleId: './timesheet-entry',
                 nav: false,
-                title: 'Timesheet',
+                title: this.i18n.tr('timesheetentry'),
                 auth: true
             }
         ]);

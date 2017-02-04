@@ -303,10 +303,10 @@ export class AdminReports {
             this.i18n.tr('duration') + ';' +
             this.i18n.tr('salary') + ';' +
             this.i18n.tr('charges') + ';' +
-            this.i18n.tr('provisionCP-brut') + ';' +
-            this.i18n.tr('provisionCP-charges') + ';' +
-            this.i18n.tr('primeprecarite-brut') + ';' +
-            this.i18n.tr('primeprecarite-charges') +
+            this.i18n.tr('provisionCPbrut') + ';' +
+            this.i18n.tr('provisionCPcharges') + ';' +
+            this.i18n.tr('precaritebrut') + ';' +
+            this.i18n.tr('precaritecharges') +
             '\n'
         ;
 
@@ -351,8 +351,8 @@ export class AdminReports {
             reports.totals.accounts.primePrecariteCharges +
             '\n' +
             this.i18n.tr('netpayable') + ';' + reports.totals.accounts.netPayable + '\n' +
-            this.i18n.tr('ursaaf') + ';' + reports.totals.accounts.ursaff + '\n' +
-            this.i18n.tr('provisionCP') + ';' + reports.totals.accounts.provisionCP + '\n' +
+            this.i18n.tr('urssaf') + ';' + reports.totals.accounts.urssaf + '\n' +
+            this.i18n.tr('provisionCPbrut') + ';' + reports.totals.accounts.provisionCP + '\n' +
             this.i18n.tr('provisionprecarite') + ';' + reports.totals.accounts.provisionPrecarite + '\n'            
         ;
         

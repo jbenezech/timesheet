@@ -1,10 +1,9 @@
 import { HttpClient } from 'aurelia-fetch-client';
 import { EventAggregator } from 'aurelia-event-aggregator';
 import { I18N } from 'aurelia-i18n';
+import Backend from 'i18next-xhr-backend';
 import semanticui from 'semantic';
 import semanticuicalendar from 'semantic-calendar/calendar';
-import PouchDB from 'pouchdb';
-
 import { LogManager } from 'aurelia-framework';
 import { ConsoleAppender } from 'aurelia-logging-console';
 
@@ -15,7 +14,16 @@ LogManager.addAppender(new ConsoleAppender());
 LogManager.setLevel(LogManager.logLevel.debug);
 
 export function configure(aurelia) {
-  aurelia.use
+
+    //disable warnings from bluebird poluting the console
+    //https://github.com/aurelia/skeleton-navigation/issues/282
+    //https://www.jujens.eu/posts/en/2016/Aug/17/switch-to-aurelia-cli/
+    Promise.config({
+        longStackTraces: false,
+        warnings: false,
+    });
+
+    aurelia.use
     .standardConfiguration()
     .developmentLogging()
 
@@ -23,16 +31,18 @@ export function configure(aurelia) {
     .plugin('aurelia-validation')
     .plugin('aurelia-i18n', (instance) => {
         
+        instance.i18next.use(Backend);
+
         //below settings needed to support en-US locales (with - in name)
         instance.i18next.options.load = 'currentOnly';
         instance.i18next.options.lowerCaseLng = false;
         instance.i18next.options.cleanCode = false;
 
         return instance.setup({
-            lngs: ['en-US', 'fr-FR'],
+            resGetPath : 'locales/__lng__/__ns__.json',
+            lngs: ['fr-FR'],
             fallbackLng : settings.default_locale,
             debug: settings.debug,
-            //ns: ['translation', 'announcement', 'organization', 'user'],
             ns: ['translation'],
             defaultNs: 'translation'
         });

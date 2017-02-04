@@ -137,6 +137,11 @@
             "main": "i18next"
           },
           {
+            "name": "i18next-xhr-backend",
+            "path": "../node_modules/i18next-xhr-backend/dist/umd",
+            "main": "i18nextXHRBackend"
+          },
+          {
             "name": "aurelia-i18n",
             "path": "../node_modules/aurelia-i18n/dist/amd",
             "main": "aurelia-i18n"
@@ -160,11 +165,6 @@
             "name": "pouchdb-upsert",
             "path": "../node_modules/pouchdb-upsert/dist",
             "main": "pouchdb.upsert"
-          },
-          {
-            "name": "worker-pouch",
-            "path": "../node_modules/worker-pouch/dist",
-            "main": "pouchdb.worker-pouch"
           },
           {
             "name": "semantic",

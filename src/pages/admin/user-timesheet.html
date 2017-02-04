@@ -47,7 +47,7 @@
                     <th t="date">Date</th>
                     <th t="purpose">Purpose</th>
                     <th t="duration">Duration</th>
-                    <th t="description">Observation</th>
+                    <th t="observation">Observation</th>
                     <th t="allocation">Allocation</th>
                 </tr>
             </thead>
@@ -65,7 +65,7 @@
                         <dropdown 
                             selected-entry.two-way="entity.allocation"
                             route="allocation"
-                            name="timesheet:allocation"
+                            name="allocation"
                             required.bind=false
                             allow-add.bind=true
                             select-action.call="allocationSelected(dropdown)"

@@ -39,7 +39,7 @@ export class AccountingService {
                     provision_cp_charges: new Decimal(row.value[2]),
                     prime_precarite_brut: new Decimal(row.value[3]),
                     net_payable: new Decimal(row.value[4]),
-                    ursaff: new Decimal(row.value[5])
+                    urssaf: new Decimal(row.value[5])
                 }
             );
 
@@ -66,7 +66,7 @@ export class AccountingService {
             charges: salarySlip.salary.mul(rules.charges),
             provisionCPBrut: salarySlip.salary.mul(rules.provision_cp_brut),
             netPayable: salarySlip.salary.mul(rules.net_payable),
-            ursaff: salarySlip.salary.mul(rules.ursaff)
+            urssaf: salarySlip.salary.mul(rules.urssaf)
         };
 
         accounts.provisionCPCharges = accounts.charges.mul(rules.provision_cp_charges);
