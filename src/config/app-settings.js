@@ -1,8 +1,7 @@
-        //'https://ruelle.cloudant.com/'
+import environment from '../environment'
+
 var settings = {
-    remoteUrls: [
-        'https://proacti.cloudant.com/'
-    ],
+    remoteUrls: environment.remoteUrls,
     default_locale: 'fr-FR',
     debug: true,
 

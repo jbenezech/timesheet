@@ -373,15 +373,16 @@ define('blur-image',["exports", "aurelia-framework"], function (exports, _aureli
 		stackBlurCanvasRGBA(canvas, 0, 0, w, h, BLUR_RADIUS);
 	};
 });
-define('environment',["exports"], function (exports) {
-  "use strict";
+define('environment',['exports'], function (exports) {
+  'use strict';
 
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
   exports.default = {
     debug: true,
-    testing: true
+    testing: true,
+    remoteUrls: ['https://proacti.cloudant.com/']
   };
 });
 define('main',['exports', 'aurelia-fetch-client', 'aurelia-event-aggregator', 'aurelia-i18n', 'i18next-xhr-backend', 'semantic', 'semantic-calendar/calendar', 'aurelia-framework', 'aurelia-logging-console', 'lib/form/semantic-form-validation-renderer', './config/app-settings'], function (exports, _aureliaFetchClient, _aureliaEventAggregator, _aureliaI18n, _i18nextXhrBackend, _semantic, _calendar, _aureliaFramework, _aureliaLoggingConsole, _semanticFormValidationRenderer, _appSettings) {
@@ -648,15 +649,23 @@ define('components/user-app-router',['exports', 'aurelia-framework', 'aurelia-i1
         return UserAppRouter;
     }()) || _class);
 });
-define('config/app-settings',['exports'], function (exports) {
+define('config/app-settings',['exports', '../environment'], function (exports, _environment) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
         value: true
     });
 
+    var _environment2 = _interopRequireDefault(_environment);
+
+    function _interopRequireDefault(obj) {
+        return obj && obj.__esModule ? obj : {
+            default: obj
+        };
+    }
+
     var settings = {
-        remoteUrls: ['https://proacti.cloudant.com/'],
+        remoteUrls: _environment2.default.remoteUrls,
         default_locale: 'fr-FR',
         debug: true,
 

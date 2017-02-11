@@ -1,4 +1,7 @@
 export default {
   debug: true,
-  testing: true
+  testing: true,
+  remoteUrls: [
+    'https://proacti.cloudant.com/'
+  ]
 };
