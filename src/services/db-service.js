@@ -8,6 +8,7 @@ import { HttpClient } from 'aurelia-fetch-client';
 import { log } from './log';
 import settings from '../config/app-settings';
 import { ShardingService } from './sharding-service';
+import environment from '../environment';
 
 @inject(Session, ShardingService, HttpClient, EventAggregator)
 @singleton()
@@ -55,6 +56,11 @@ export class DBService {
         let me = this;
 
         let db = new PouchDB(dbName,{skip_setup: true});
+        
+        //don't sync with remote in testing environment
+        if (environment.testing) {
+            return db;
+        }
         
         this.addUpdateCheckpoint(dbName);
 
@@ -430,6 +436,11 @@ export class DBService {
 
     hasUnsyncedUpdate() {
 
+        //no syncing on test env
+        if (environment.testing) {
+            return false;
+        }
+
         let hasUnsynced = false;
         let me = this;
 
@@ -446,4 +457,5 @@ export class DBService {
 
         return hasUnsynced;  
     }
+
 }

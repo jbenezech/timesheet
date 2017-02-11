@@ -7,6 +7,7 @@ import { Confirmation } from "../resources/confirmation/confirmation";
 import { DBService } from '../services/db-service';
 import { Session } from '../services/session';
 import settings from '../config/app-settings';
+import environment from '../environment';
 import { log } from '../services/log';
 
 @inject(Session, I18N, DBService, DialogService, EventAggregator)
@@ -21,6 +22,10 @@ export class TopBar {
         this.db = db;
         this.dialogService = dialogService;
         this.ea = ea;
+    }
+
+    get isTest() {
+        return environment.testing;
     }
 
     get isAdmin() {
@@ -64,4 +69,8 @@ export class TopBar {
         this.navigate('app/timesheets/planning');
     }
 
+    //used for testing, clears all documents in all databases
+    wipeAll() {
+        this.db.removeDBs();
+    }
 }

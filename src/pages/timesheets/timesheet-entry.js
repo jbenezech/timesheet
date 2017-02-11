@@ -163,8 +163,12 @@ export class TimesheetEntry {
                 this.entity.id = this.entity.purpose + ':' + Date.now();
             }
 
-            this.entity.duration = parseInt(this.entity.hours) + parseFloat(parseInt(this.entity.minutes)/60);
-            this.entity.interpret_duration = parseInt(this.entity.interpret_hours) + parseFloat(parseInt(this.entity.interpret_minutes)/60);
+            this.entity.hours = parseInt(this.entity.hours);
+            this.entity.minutes = parseInt(this.entity.minutes);
+            this.entity.interpret_hours = parseInt(this.entity.interpret_hours);
+            this.entity.interpret_minutes = parseInt(this.entity.interpret_minutes);
+            this.entity.duration = this.entity.hours + parseFloat(this.entity.minutes/60);
+            this.entity.interpret_duration = this.entity.interpret_hours + parseFloat(this.entity.interpret_minutes/60);
 
             let timesheetId = moment(this.entity.date).format('YYYY-MM');
             
@@ -205,6 +209,8 @@ export class TimesheetEntry {
                         interpret_hours: 0,
                         interpret_minutes: 0
                     };
+
+                    this.setupValidation();
                 }
 
                 if (this.saveAction) {

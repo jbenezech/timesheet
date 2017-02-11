@@ -15,7 +15,18 @@
                 </a>
             </div>
         </div>
+        ${ environment.testing }
         <div class="right menu">
+
+            <a 
+                href="#"
+                class="item"
+                id="WipeAll"
+                if.bind="isTest"
+                click.delegate="wipeAll()"
+            >
+                <i class="trash icon"></i>
+            </a>
 
             <a 
                 route-href="route: admin-planning"
@@ -46,7 +57,7 @@
                 <i class="user icon"></i>
             </a>
 
-            <a href="#" class="item" click.delegate="logout()">
+            <a href="#" class="item" id="Logout" click.delegate="logout()">
                  <i class="sign out icon"></i>
             </a>
             
