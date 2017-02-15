@@ -1,7 +1,7 @@
 export default {
-  debug: true,
-  testing: true,
+  debug: false,
+  testing: false,
   remoteUrls: [
-    'https://proacti.cloudant.com/'
+    'https://ruelle.cloudant.com/'
   ]
 };

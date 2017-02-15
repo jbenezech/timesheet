@@ -84,7 +84,7 @@ export class UserTimesheet {
             }
 
             //manually update the timesheet as binding doesn't work with semantic checkbox
-            this.timesheet.precarite = $('.' + userName + ' .precarite.checkbox').checkbox('is checked');
+            this.timesheet.precarite = $('.' + this.userName + ' .precarite.checkbox').checkbox('is checked');
 
             //save and retrieve the latest revision of the timesheet for that user
             this.db.save('timesheet-' + this.userName, this.timesheet).then( () => {

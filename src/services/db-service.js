@@ -22,6 +22,7 @@ export class DBService {
     lastUpdates = new Map();
     lastSyncs = new Map();
 
+    //array if database patterns that are synced live with remote
     liveReplicates = [
         '^accounting$',
         '^allocation$',
@@ -96,6 +97,18 @@ export class DBService {
 
     }
 
+    isLiveReplicate(dbName) {
+
+        let user = atob(localStorage.getItem('aurelia_token')).split(':')[0];
+        for (let db of this.liveReplicates) {
+            if (dbName.match(new RegExp(db.replace('{0}', user)))) {
+                return true;
+            }
+        }
+        return false;
+
+    }
+
     getSyncOptions(dbName) {
         //We can't use live replication with all databases as browsers have a limit
         //on the number of active connections per host.
@@ -110,13 +123,9 @@ export class DBService {
             }
         }
 
-        let user = atob(localStorage.getItem('aurelia_token')).split(':')[0];
-        for (let db of this.liveReplicates) {
-            if (dbName.match(new RegExp(db.replace('{0}', user)))) {
-                options.live = true;
-                options.retry = true;
-                break;
-            }
+        if (this.isLiveReplicate(dbName)) {
+            options.live = true;
+            options.retry = true;
         }
         
         return options;
@@ -361,6 +370,18 @@ export class DBService {
 
     }
 
+    replicate(dbName) {
+        let me = this;
+        return PouchDB.replicate(dbName, this.sharding.getRemoteUrl() + dbName)
+        .on('change', function (change) {
+            me.addSyncCheckpoint(dbName);
+            return new Promise( (resolve) => resolve(true) );
+        }).on('error', function (err) {
+            me.handleSyncError(db, err);
+            return new Promise( (resolve) => resolve(false) );
+        });        
+    }
+
     save(dbName, doc) {
 
         this.addUpdateCheckpoint(dbName);
@@ -370,6 +391,14 @@ export class DBService {
 
         return db.put(doc)
         .then(function (response) {
+            //if the database is not replicated live, manually sync it now
+            if (!me.isLiveReplicate(dbName)) {
+                return me.replicate(dbName)
+                .then( (success) => {
+                    return response;
+                });
+            }
+
             return response;
         })
         .catch(function (err) {
@@ -387,6 +416,13 @@ export class DBService {
 
         return db.post(doc)
         .then(function (response) {
+            //if the database is not replicated live, manually sync it now
+            if (!this.isLiveReplicate(dbName)) {
+                return this.replicate(dbName)
+                .then( (success) => {
+                    return response;
+                });
+            }
             return response;
         })
         .catch(function (err) {
