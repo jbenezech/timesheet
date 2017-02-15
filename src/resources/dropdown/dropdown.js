@@ -168,8 +168,8 @@ export class DropDownCustomElement {
         let doc = {
             name: newEntry
         };
-
         let me = this;
+
         this.db.create(this.route, doc).then(
             response => {
                 doc._id = response.id;

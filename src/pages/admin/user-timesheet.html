@@ -63,7 +63,7 @@
                     <td>${ entity.observation | truncate: 40 }</td>
                     <td onclick="event.stopPropagation();" style="overflow:visible;">
                         <dropdown 
-                            selected-entry.two-way="entity.allocation"
+                            selected-entry.one-way="entity.allocation"
                             route="allocation"
                             name="allocation"
                             required.bind=false

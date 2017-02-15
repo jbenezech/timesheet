@@ -14,7 +14,7 @@ describe('App', () => {
         //clear all data before starting new test
         element(by.id('WipeAll')).click();
 
-        browser.sleep(1000);
+        browser.sleep(2000);
 
     });
 

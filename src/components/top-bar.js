@@ -71,6 +71,12 @@ export class TopBar {
 
     //used for testing, clears all documents in all databases
     wipeAll() {
-        this.db.removeDBs();
+        this.db.wipeAllDBs();
     }
+
+    //used for testing, force replication of all documents in all databases
+    replicateAll() {
+        this.db.replicateAllDBs();
+    }
+
 }

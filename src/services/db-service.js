@@ -25,7 +25,6 @@ export class DBService {
     //array if database patterns that are synced live with remote
     liveReplicates = [
         '^accounting$',
-        '^allocation$',
         '^interpret$',
         '^purpose$',
         '^timesheet\-{0}$'
@@ -42,25 +41,35 @@ export class DBService {
         PouchDB.plugin(PouchdbUpsert);
     }
 
+    //returns the db instance created for a name
     getDB(dbName) {
 
         if (!this.dbs.has(dbName)) {
-            let db = this.setupDB(dbName);
-            this.dbs.set(dbName, db);
+            return this.setupDB(dbName)
+            .then( (db) => {
+                this.dbs.set(dbName, db);
+                return db;
+            });
         }
-        return this.dbs.get(dbName);
+
+        return new Promise( (resolve) => resolve(this.dbs.get(dbName)) );
 
     } 
 
+    //sets the database up with eventual sync to remote
     setupDB(dbName) {
 
         let me = this;
 
         let db = new PouchDB(dbName,{skip_setup: true});
         
-        //don't sync with remote in testing environment
+        //don't sync live with remote in testing environment
+        //but retrieve remote docs
         if (environment.testing) {
-            return db;
+            return db.replicate.from(this.sharding.getRemoteUrl() + dbName)
+            .then( () => {
+                return db;
+            } );
         }
         
         this.addUpdateCheckpoint(dbName);
@@ -93,10 +102,11 @@ export class DBService {
 
         this.syncHandlers.set(dbName, handler);
 
-        return db;
+        return new Promise( (resolve) => resolve(db) );
 
     }
 
+    //returns true if the database has been setup with remote sync
     isLiveReplicate(dbName) {
 
         let user = atob(localStorage.getItem('aurelia_token')).split(':')[0];
@@ -109,6 +119,7 @@ export class DBService {
 
     }
 
+    //returns the sync options for a database
     getSyncOptions(dbName) {
         //We can't use live replication with all databases as browsers have a limit
         //on the number of active connections per host.
@@ -131,6 +142,7 @@ export class DBService {
         return options;
     }
 
+    //handles sync errors, publishing an event eventually
     handleSyncError(db, err) {
         //destroy local database if permission has been revoked or remote database has been deleted
         if (err.status === 403 || err.status === 404) {
@@ -147,6 +159,7 @@ export class DBService {
         }
     }
 
+    //handles update errors, publishing an error eventually
     handleUpdateError(db, doc, err) {
 
         //only handling immediate conflicts by retrying
@@ -162,6 +175,7 @@ export class DBService {
         }
     }
 
+    //remove the database from storage and memory. Clears sync points
     removeDB(db) {
         if (this.syncHandlers.has(db.name)) {
             this.syncHandlers.get(db.name).cancel();
@@ -201,6 +215,27 @@ export class DBService {
 
     }
 
+    //deleted all documents in local database and disconnect from remote
+    wipeAllDBs() {
+
+        let me = this;
+        let promises = [];
+        //destroy the database and set it up again without replication
+        this.dbs.forEach(function (db, dbName) {
+            let promise = me.list(dbName)
+            .then( (rows) => {
+                return rows.map( (row) => {
+                    db.remove(row.doc._id, row.doc._rev);
+                });
+            });
+            promises.push(promise);
+        });
+        
+        return Promise.all(promises)
+
+    }
+
+    //list all application users
     listUsers() {
 
         //we cannot replicate the _users database even with admin access to it
@@ -246,11 +281,12 @@ export class DBService {
             //if we cannot connect to remote, retrieve local staff database
             return db.allDocs({include_docs: true})
             .then( (result) => result.rows)
-            .catch ( err => { log.error(err); });
+            .catch ( err => { log.error(err); return []; });
         })
 
     }
 
+    //creates a local user if it doe not exist, replace it if it does
     createOrReplaceLocalUser(user) {
 
         let db = this.dbs.get('staff');
@@ -278,13 +314,15 @@ export class DBService {
                 .then( () => {
                     return user;
                 }).catch(err => {
-                    return me.handleUpdateError(db, user.doc, err);
+                    me.handleUpdateError(db, user.doc, err);
+                    return user;
                 });
             }
         });
 
     }
 
+    //list docs in a database
     list(dbName, limit = false, descending = false) {
 
         let options = {
@@ -313,37 +351,45 @@ export class DBService {
         }
 
         let me = this;
-        
-        return this.getDB(dbName).allDocs(firstRequestOptions)
-        .then(function (results) {
-        
-            return me.getDB(dbName).allDocs(secondRequestOptions)
-            .then(function (endResults) {
-        
-                return [
-                    ...results.rows,
-                    ...endResults.rows
-                ];
-        
+
+        return this.getDB(dbName).then( (db) => {
+            return db.allDocs(firstRequestOptions)
+            .then(function (results) {
+            
+                return db.allDocs(secondRequestOptions)
+                .then(function (endResults) {
+                    return [
+                        ...results.rows,
+                        ...endResults.rows
+                    ];
+            
+                }).catch(function (err) {
+                    log.error(err);
+                    return [];
+                });
+                
             }).catch(function (err) {
                 log.error(err);
+                return [];
             });
-            
-        }).catch(function (err) {
-            log.error(err);
         });
     }
 
+    //gets a doc from a database
     get(dbName, id) {
 
-        return this.getDB(dbName).get(id, {})
-        .then(function (result) {
-            return result;
-        }).catch(function (err) {
-            log.error(err);
+        return this.getDB(dbName).then( (db) => {
+            return db.get(id, {})
+            .then(function (result) {
+                return result;
+            }).catch(function (err) {
+                log.error(err);
+                return {};
+            });
         });
     }
 
+    //query a view
     view(dbName, viewName, startKey = '', endKey = '', group = false, descending = false, limit = 0) {
 
         let options = {
@@ -357,80 +403,106 @@ export class DBService {
             options.limit = limit;
         }
 
-        return this.getDB(dbName).query(
-            viewName,
-            options
-        )
-        .then(function (response) {
-            return response.rows;
+        return this.getDB(dbName).then( (db) => {
+            return db.query(
+                viewName,
+                options
+            )
+            .then(function (response) {
+                return response.rows;
+            })
+            .catch(function (err) {
+                log.error(err);
+                return [];
+            });
+        });
+    }
+
+    //replicate a local database to remote
+    replicate(db) {
+        let me = this;
+        return db.replicate.to(this.sharding.getRemoteUrl() + db.name)
+        .then( (result) => {
+            me.addSyncCheckpoint(db.name);
+            return new Promise( (resolve) => resolve() );
         })
-        .catch(function (err) {
+        .catch( err => {
             log.error(err);
         });
-
     }
 
-    replicate(dbName) {
+    //replicates all databases to remote
+    replicateAllDBs() {
         let me = this;
-        return PouchDB.replicate(dbName, this.sharding.getRemoteUrl() + dbName)
-        .on('change', function (change) {
-            me.addSyncCheckpoint(dbName);
-            return new Promise( (resolve) => resolve(true) );
-        }).on('error', function (err) {
-            me.handleSyncError(db, err);
-            return new Promise( (resolve) => resolve(false) );
-        });        
+        let promises = [];
+
+        this.dbs.forEach(function (db, dbName) {
+            promises.push(me.replicate(db));
+        });
+
+        return Promise.all(promises);
     }
 
+    //saves a doc in the database
     save(dbName, doc) {
 
         this.addUpdateCheckpoint(dbName);
         
-        let db = this.getDB(dbName);
-        let me = this;
+        return this.getDB(dbName).then( (db) => {
 
-        return db.put(doc)
-        .then(function (response) {
-            //if the database is not replicated live, manually sync it now
-            if (!me.isLiveReplicate(dbName)) {
-                return me.replicate(dbName)
-                .then( (success) => {
-                    return response;
-                });
-            }
+            let me = this;
 
-            return response;
-        })
-        .catch(function (err) {
-            me.handleUpdateError(db, doc, err);
+            return db.put(doc)
+            .then(function (response) {
+                //if the database is not replicated live, manually sync it now
+                if (!me.isLiveReplicate(dbName)) {
+                    return me.replicate(db)
+                    .then( (success) => {
+                        return response;
+                    });
+                }
+
+                return response;
+            })
+            .catch(function (err) {
+                me.handleUpdateError(db, doc, err);
+            });
+
         });
 
     }
 
+    //creates a doc in the database
     create(dbName, doc) {
 
+        let me = this;
         this.addUpdateCheckpoint(dbName);
 
-        let db = this.getDB(dbName);
-        let me = this;
+        return this.getDB(dbName).then( (db) => {
+            
+            let me = this;
 
-        return db.post(doc)
-        .then(function (response) {
-            //if the database is not replicated live, manually sync it now
-            if (!this.isLiveReplicate(dbName)) {
-                return this.replicate(dbName)
-                .then( (success) => {
-                    return response;
-                });
-            }
-            return response;
-        })
-        .catch(function (err) {
-            me.handleUpdateError(db, doc, err);
+            return db.post(doc)
+            .then(function (response) {
+                       
+                //if the database is not replicated live, manually sync it now
+                if (!me.isLiveReplicate(dbName)) {
+                    return me.replicate(db)
+                    .then( (success) => {
+                        return response;
+                    });
+                }
+
+                return response;
+            })
+            .catch(function (err) {
+                me.handleUpdateError(db, doc, err);
+            });
+
         });
-
     }
 
+    //adds a pending sync check point 
     addUpdateCheckpoint(dbName) {
         this.lastUpdates.set(dbName, Date.now());
 
@@ -438,6 +510,7 @@ export class DBService {
         this.persistMap(this.lastUpdates, 'last-updates');
     }
 
+    //add a synced check point
     addSyncCheckpoint(dbName) {
         this.lastSyncs.set(dbName, Date.now());
 
@@ -445,22 +518,26 @@ export class DBService {
         this.persistMap(this.lastSyncs, 'last-syncs');
     }
 
+    //removes a pending sync check point
     removeUpdateCheckpoint(dbName) {
         this.lastUpdates.delete(dbName);
         this.persistMap(this.lastUpdates, 'last-updates');
     }
 
+    //removes a synced check point
     removeSyncCheckpoint(dbName) {
         this.lastSyncs.delete(dbName);
         this.persistMap(this.lastSyncs, 'last-syncs');
     }
 
+    //persists a map to local storage
     persistMap(map, name) {
         let storage = [];
         map.forEach( (value, key) => storage = [...storage, [key, value]] );
         localStorage.setItem(name, JSON.stringify(storage));
     }
 
+    //restores in-memoty sync check points from local storage
     restoreCheckpoints() {
         if (localStorage.getItem('last-updates') !== null) {
             this.lastUpdates = new Map(JSON.parse(localStorage.getItem('last-updates')));
@@ -470,6 +547,7 @@ export class DBService {
         }
     }
 
+    //returns true if some local changes haven't yet been synced with remote
     hasUnsyncedUpdate() {
 
         //no syncing on test env

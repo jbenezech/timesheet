@@ -175,7 +175,7 @@ export class TimesheetEntry {
             //get the timesheet document
             this.db.get('timesheet-' + this.session.getUser().name, timesheetId).then( timesheet => {
 
-                if (! timesheet ) {
+                if (! timesheet._id ) {
                     timesheet = {
                         _id: timesheetId,
                         entries: []

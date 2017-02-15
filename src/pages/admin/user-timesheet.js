@@ -45,7 +45,8 @@ export class UserTimesheet {
     allocationSelected(dropdown) {
         let userName = dropdown.element.dataset.username;
 
-        //manually update the entry as binding doesn't seem to work on the internal data array        
+        //manually update the entry as dropdown gets detached before this action (and addAction)
+        //arer called if using two way binding
         this.timesheet.entries.forEach( (entry) => {
             if (entry.id === dropdown.element.dataset.entryid) {
                 entry.allocation = dropdown.selectedEntry;

@@ -29,8 +29,19 @@
             </a>
 
             <a 
+                href="#"
+                class="item"
+                id="ForceReplicate"
+                if.bind="isTest"
+                click.delegate="replicateAll()"
+            >
+                <i class="share alternate icon"></i>
+            </a>
+
+            <a 
                 route-href="route: admin-planning"
                 class="item"
+                id="AdminPanel"
                 if.bind="isAdmin"
             >
                 <i class="calculator icon"></i>
