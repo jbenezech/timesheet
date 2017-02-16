@@ -132,7 +132,7 @@ export class TimesheetEntry {
 
         return this.db.get('timesheet-' + this.session.getUser().name,  timesheetId)
         .then( response => {
-            response.map( (entry) => {            
+            response.entries.map( (entry) => {            
                 if (entry.id === entryId) {
                     me.entity = entry;
                 }

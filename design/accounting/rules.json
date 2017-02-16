@@ -1,0 +1,11 @@
+{
+  "_id": "_design/accounting",
+  "views": {
+    "rules": {
+      "map": "function (doc) {
+        emit(doc._id, [doc.charges, doc.provision_cp_brut, doc.provision_cp_charges, doc.prime_precarite_brut, doc.net_payable, doc.urssaf]);
+      }"
+    }
+  },
+  "language": "javascript"
+}

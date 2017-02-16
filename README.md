@@ -1,9 +1,9 @@
-An Aurelia CLI application using PouchDB/CouchDB for storage
+An Offline-first Aurelia CLI progressive webapp using PouchDB/CouchDB for storage
 ============================================================
 
-## Context
+## Use Case
 Staff of an organization need to report every month to their admin the time they spent each day on each projects.
-At the end of the month, the admin allocates a budget for each work line and calculates the accounting implications of each budgeet which are then submitted to the accounting system.
+At the end of the month, the admin allocates a budget for each work line and calculates the accounting implications of each budget which are then submitted to the accounting system.
 
 ## Production architecture
 - Application stored on AWS S3
@@ -12,12 +12,20 @@ At the end of the month, the admin allocates a budget for each work line and cal
 
 ## Database design
 Some fixed databases for shared content:
-- accounting : stores accounting rules such as tax rate
+- accounting : stores accounting rules such as tax rate (see example in design/accounting/example_db.json)
 - allocation : stores budget lines which need to be allocated
 - interpret : stores the information of interprets used by the organization
 - purpose : stores the information on the specific task/project staff spent time on
 
-The timesheets are stored on a per-user database in order to control permissions (no document-level permission possible, at least with Cloudant)
+The timesheets are stored on a per-user database in order to control permissions (no document-level permission possible, at least with Cloudant). Naming convention is ``timesheet-<username>``.
+
+### Users
+Users are managed by the built-in ``_users`` database. See example in design/_users/example_doc.json.
+
+### Permissions
+- Reader/Writer/Replicator on fixed databases except accounting for everybody
+- Reader/Writer/Replicator on user databases for own user and for admin
+- Admin permission on _users database for admin, Reader permission for all
 
 ## Challenges
 ### Live sync

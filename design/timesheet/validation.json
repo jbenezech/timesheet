@@ -1,0 +1,64 @@
+{
+  "_id": "_design/validation",
+  "_rev": "13-78c9a994c2a55e2fa06b84086dfbf2fe",
+  "validate_doc_update": "function (newDoc, oldDoc, userCtx) { 
+
+    for (var i=0; i< newDoc.entries.length; i++) {
+
+        var entry = newDoc.entries[i];
+
+        if (entry.date === undefined || entry.date === null) {
+          throw({forbidden: 'Document must have a date.'});
+        }
+        if (! entry.date.match(/^[\\d]{4}\\-[\\d]{2}\\-[\\d]{2}/)) {
+          throw({forbidden: 'Document has an invalid date.' + entry.date});
+        }
+        if (entry.purpose === undefined || entry.purpose === null) {
+          throw({forbidden: 'Document must have a purpose.'});
+        }
+        if (entry.hours === undefined || entry.hours === null) {
+          throw({forbidden: 'Document must have hours.'});
+        }
+        if (! parseInt(entry.hours) == entry.hours ) {
+          throw({forbidden: 'Document has invalid hours.'});
+        }
+        if (entry.minutes === undefined || entry.minutes === null) {
+          throw({forbidden: 'Document must have minutes.'});
+        }
+        if (! parseInt(entry.minutes) == entry.minutes ) {
+          throw({forbidden: 'Document has invalid minutes.'});
+        }
+        if (entry.duration === undefined || entry.duration === null) {
+          throw({forbidden: 'Document must have duration.'});
+        }
+        if ( parseFloat(entry.duration) != entry.duration ) {
+          throw({forbidden: 'Document has invalid duration.'});
+        }
+        if ( (entry.hours === 0 && entry.minutes === 0) || entry.duration === 0) {
+          throw({forbidden: 'Document must have a duration greater than  0.'});      
+        }
+        if (entry.interpret_hours === undefined || entry.interpret_hours === null) {
+          throw({forbidden: 'Document must have interpret_hours.'});
+        }
+        if (! parseInt(entry.interpret_hours) == entry.interpret_hours ) {
+          throw({forbidden: 'Document has invalid interpret_hours.'});
+        }
+        if (entry.interpret_minutes === undefined || entry.interpret_minutes === null) {
+          throw({forbidden: 'Document must have interpret_minutes.'});
+        }
+        if (! parseInt(entry.interpret_minutes) == entry.interpret_minutes ) {
+          throw({forbidden: 'Document has invalid interpret_minutes.'});
+        }
+        if (entry.interpret_duration === undefined || entry.interpret_duration === null) {
+          throw({forbidden: 'Document must have duration.'});
+        }
+        if ( parseFloat(entry.interpret_duration) != entry.interpret_duration ) {
+          throw({forbidden: 'Document has invalid duration.'});
+        }
+        if (entry.allocation !== undefined && userCtx.roles.indexOf('admin') < 0 ) {
+          throw({forbidden: 'Only admin can modify a document once allocated'});
+        }
+
+    }
+  }"
+}

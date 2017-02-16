@@ -1,0 +1,17 @@
+{
+  "_id": "_design/allocations",
+  "views": {
+    "stats": {
+      "map": "function (doc) {
+        for (var entry in doc.entries) {
+            var allocation = doc.entries[entry].allocation;
+            var ratio = doc.entries[entry].ratio;
+            if (allocation != null && ratio != null) {
+                emit(doc._id +':'+ allocation, [ratio, doc.entries[entry].duration, doc.salary, doc.precarite]);
+            }
+        }
+      }"
+    }
+  },
+  "language": "javascript"
+}

@@ -1,0 +1,12 @@
+{
+  "_id": "org.couchdb.user:jerome",
+  "_rev": "3-ad1f37dec329d2b374ff28fc22e9f3c0",
+  "name": "jerome",
+  "roles": [
+    "staff"
+  ],
+  "type": "user",
+  "password_scheme": "simple",
+  "salt": "1b1e2c387664120126b313452f42e370",
+  "password_sha": "19b24ed54ab242a745fdc87e1942793ca8dc36e2"
+}
