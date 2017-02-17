@@ -31,6 +31,7 @@ export class AccountingService {
         .then( rows => {
 
             let row = rows[0];
+
             this.rules.set(
                 row.key,
                 {
@@ -42,6 +43,8 @@ export class AccountingService {
                     urssaf: new Decimal(row.value[5])
                 }
             );
+
+            return new Promise( (resolve) => resolve() );
 
         });
 

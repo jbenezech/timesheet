@@ -24,7 +24,6 @@ export class DBService {
 
     //array if database patterns that are synced live with remote
     liveReplicates = [
-        '^accounting$',
         '^interpret$',
         '^purpose$',
         '^timesheet\-{0}$'

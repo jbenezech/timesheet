@@ -173,7 +173,7 @@ export class AdminReports {
                         };
 
                          return me.accounting.provisionAccounts(
-                            me.accountingRuleEndKey,
+                            me.month,
                             report
                         );
 
