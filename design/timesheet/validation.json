@@ -1,8 +1,9 @@
 {
   "_id": "_design/validation",
-  "_rev": "13-78c9a994c2a55e2fa06b84086dfbf2fe",
   "validate_doc_update": "function (newDoc, oldDoc, userCtx) { 
 
+    if(newDoc.entries === undefined || newDoc.entries === null) { return; } 
+    
     for (var i=0; i< newDoc.entries.length; i++) {
 
         var entry = newDoc.entries[i];

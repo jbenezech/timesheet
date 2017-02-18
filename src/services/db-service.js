@@ -435,7 +435,7 @@ export class DBService {
         let me = this;
         let promises = [];
 
-        this.dbs.forEach(function (db, dbName) {
+        this.dbs.forEach( (db, dbName) => {
             promises.push(me.replicate(db));
         });
 
@@ -452,7 +452,7 @@ export class DBService {
             let me = this;
 
             return db.put(doc)
-            .then(function (response) {
+            .then( (response) => {
                 //if the database is not replicated live, manually sync it now
                 if (!me.isLiveReplicate(dbName)) {
                     return me.replicate(db)
@@ -463,7 +463,7 @@ export class DBService {
 
                 return response;
             })
-            .catch(function (err) {
+            .catch( (err) => {
                 me.handleUpdateError(db, doc, err);
             });
 
@@ -479,10 +479,8 @@ export class DBService {
 
         return this.getDB(dbName).then( (db) => {
             
-            let me = this;
-
             return db.post(doc)
-            .then(function (response) {
+            .then( (response) => {
                        
                 //if the database is not replicated live, manually sync it now
                 if (!me.isLiveReplicate(dbName)) {
@@ -494,11 +492,39 @@ export class DBService {
 
                 return response;
             })
-            .catch(function (err) {
+            .catch( (err) => {
                 me.handleUpdateError(db, doc, err);
             });
 
         });
+    }
+
+    //deletes a doc from the database
+    delete(dbName, docId) {
+        let me = this;
+        this.addUpdateCheckpoint(dbName);
+console.log(dbName, docId);
+        return this.getDB(dbName).then( (db) => {
+            return db.get(docId).then( (doc) => {
+                console.log(doc);
+                return me.getDB(dbName).remove(doc).then( (response) => {
+                       
+                    //if the database is not replicated live, manually sync it now
+                    if (!me.isLiveReplicate(dbName)) {
+                        return me.replicate(db)
+                        .then( (success) => {
+                            return response;
+                        });
+                    }
+
+                    return response;
+                })
+                .catch(function (err) {
+                    me.handleUpdateError(db, doc, err);
+                });;
+            });
+        }); 
+
     }
 
     //adds a pending sync check point 

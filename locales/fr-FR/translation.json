@@ -40,5 +40,10 @@
     "precarite": "Prime precarité",
     "budgetting": "Budgétisation",
     "timesheetentry": "Saisie",
-    "monthtimesheet": "Entrées du mois"
+    "monthtimesheet": "Entrées du mois",
+    "success": "Modification enregistrée",
+    "yes": "oui",
+    "no": "Non",
+    "deletesure": "Êtes-vous sûr ?",
+    "confirmation": "Confirmation"
 }

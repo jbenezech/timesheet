@@ -1,25 +1,26 @@
-import {bindable, inject} from 'aurelia-framework';
-import {DialogService} from "aurelia-dialog";
-import {Confirmation} from "./confirmation";
+import { bindable, inject } from 'aurelia-framework';
+import { I18N } from 'aurelia-i18n';
+import { DialogService } from "aurelia-dialog";
 
-@inject(DialogService)
-export class DeleteButton extends BaseViewModel {
+import { Confirmation } from "./confirmation";
+
+@inject(DialogService, I18N)
+export class DeleteButton {
 
     @bindable action=()=>{};
 
-    @bindable message = "Are you sure ?";
+    @bindable message;
 
-    constructor(dialogService, ...rest) {
-        super(...rest);
+    constructor(dialogService, i18n) {
         this.dialogService = dialogService;
-        this.message = this.i18n.tr('delete_sure');
+        this.i18n = i18n;
     }
 
     do($event) {
         $event.stopPropagation();
         this.dialogService.open({
             viewModel: Confirmation,
-            model: this.message
+            model: this.i18n.tr(this.message)
         }).then(result => {
             if (result.wasCancelled) return;
             this.action();

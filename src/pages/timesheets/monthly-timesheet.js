@@ -41,6 +41,13 @@ export class MonthlyTimesheet {
         this.subscriber.dispose();
     }
 
+    isEditable(entity) {
+        return this.session.isGranted('admin') || 
+            entity.allocation === undefined ||
+            entity.allocation === null
+        ;
+    }
+
     retrieveData() {
         //first load purposes to show names in the list
         this.listPurposes()
@@ -83,5 +90,19 @@ export class MonthlyTimesheet {
 
     openEntry(id) {
         this.router.navigateToRoute('timesheets/' + this.entity._id + '/' + id + '?r=timesheets/' + this.entity._id);
+    }
+
+    delete(id) {
+
+        let me = this;
+        this.entity.entries.slice().reverse().forEach(function(item, index, object) {
+            if (item.id === id) {
+                me.entity.entries.splice(object.length - 1 - index, 1);
+            }
+        });
+
+        this.db.save('timesheet-' + this.session.getUser().name, this.entity).then( () => {
+            me.getTimesheet();
+        });
     }
 }

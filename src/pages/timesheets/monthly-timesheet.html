@@ -1,6 +1,7 @@
 <template>
     <require from="../../resources/formats/date-format"></require>
     <require from="../../resources/formats/truncate"></require>
+    <require from="../../resources/confirmation/delete-button"></require>
 
     <table class="ui striped fixed monthly timesheet table">
         <thead>
@@ -12,6 +13,7 @@
                 <th t="interpret-time">Time</th>
                 <th t="observation">Observation</th>
                 <th t="travel">Travel</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
@@ -23,6 +25,14 @@
                 <td>${ entity.interpret_duration }${ 'h' }</td>
                 <td>${ entity.observation | truncate: 40 }</td>
                 <td>${ entity.travel | truncate: 40 }</td>
+                <td onclick="event.stopPropagation();">
+                    <delete-button
+                        if.bind="isEditable(entity)"
+                        message="deletesure"
+                        action.call="delete(entity.id)"
+                    >
+                    </delete-button>
+                </td>
             </tr>
         </tbody>
     </table>
