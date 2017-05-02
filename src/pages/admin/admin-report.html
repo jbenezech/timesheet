@@ -39,6 +39,9 @@
                 <th>${ totals.accounts.primePrecariteBrut.toFixed(2) }${ '$' | t }</th>
                 <th>${ totals.accounts.primePrecariteCharges.toFixed(2) }${ '$' | t }</th>
             </tr>
+            <tr if.bind="totals.unallocated !== undefined">
+                <th t="totalnoallocated"></th>
+                <th>${ totals.unallocated.duration.toFixed(2) }h</th>
             <tr>
                 <th t="netpayable"></th>
                 <th>${ totals.accounts.netPayable.toFixed(2) }${ '$' | t }</th>

@@ -186,9 +186,29 @@ export class AdminReports {
                         user.doc.name,
                         me.groupReportsByAllocation(allocationUserReports)
                     );
-                    
                 })
-
+                .then ( () => {
+                    return me.db.view(
+                        'timesheet-' + user.doc.name, 
+                        'allocations/unallocated',
+                        me.month,
+                        me.month,
+                        false
+                    );
+                })
+                .then( entries => {
+                    if (entries === undefined || entries.length === 0) {
+                        return;
+                    }                    
+                    let report = me.allocationUserReports.get(user.doc.name);
+                    report.totals.unallocated = {
+                        duration: new Decimal(0)
+                    };
+                    entries.map( (entry) => {
+                        report.totals.unallocated.duration = report.totals.unallocated.duration.add(new Decimal(entry.value));
+                    });
+                    console.log(report.totals);
+                })
             );
         }); 
 
@@ -205,9 +225,7 @@ export class AdminReports {
         for (let reportIdx in reports) {
 
             let report = Object.assign({}, reports[reportIdx]);
-            
             if (!grouped.has(report.allocation)) {
-                
                 grouped.set(report.allocation, Object.assign({}, report));
                 totals = this.addReportsData(totals, report);
                 continue;
@@ -233,14 +251,17 @@ export class AdminReports {
 
         for (let prop of Object.getOwnPropertyNames(source)) {
                         
-            if (typeof (source[prop]) === 'object') {
-                if (source[prop] instanceof Decimal) {
-                    result[prop] = new Decimal(0);
-                    if (target[prop] === undefined) {
-                        target[prop] = new Decimal(0);
-                    }
-                    result[prop] = target[prop].add(source[prop]);
+            if (
+                typeof (source[prop]) === 'object' &&
+                source[prop] instanceof Decimal
+            ) {
+                result[prop] = new Decimal(0);
+                if (target[prop] === undefined) {
+                    target[prop] = new Decimal(0);
                 }
+                result[prop] = target[prop].add(source[prop]);
+            } else {
+                result[prop] = source[prop];
             }
             
         }
@@ -349,7 +370,14 @@ export class AdminReports {
             reports.totals.accounts.provisionCPCharges + ';' +
             reports.totals.accounts.primePrecariteBrut + ';' +
             reports.totals.accounts.primePrecariteCharges +
-            '\n' +
+            '\n'
+        ;
+        
+        if (reports.totals.unallocated !== undefined) {
+            csvContent += this.i18n.tr('totalnoallocated') + ';' + reports.totals.unallocated.duration + '\n';
+        }
+        
+        csvContent +=
             this.i18n.tr('netpayable') + ';' + reports.totals.accounts.netPayable + '\n' +
             this.i18n.tr('urssaf') + ';' + reports.totals.accounts.urssaf + '\n' +
             this.i18n.tr('provisionCPbrut') + ';' + reports.totals.accounts.provisionCP + '\n' +

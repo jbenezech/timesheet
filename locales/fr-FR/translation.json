@@ -45,5 +45,6 @@
     "yes": "oui",
     "no": "Non",
     "deletesure": "Êtes-vous sûr ?",
-    "confirmation": "Confirmation"
+    "confirmation": "Confirmation",
+    "totalnoallocated": "Total non assigné"
 }

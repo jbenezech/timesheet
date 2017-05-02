@@ -69,9 +69,16 @@ export class UserTimesheet {
 
         //calculate the ratio to apply to each entry based on the number of hours
         let totalHours = 0;
-        this.timesheet.entries.forEach( (entry) => totalHours += entry.duration );
         this.timesheet.entries.forEach( (entry) => {
-            entry.ratio = new Decimal(entry.duration).div(new Decimal(totalHours)).toJSON();
+            if (entry.allocation !== undefined) {
+                totalHours += entry.duration;
+            }
+        });
+        this.timesheet.entries.forEach( (entry) => {
+            entry.ratio = 0;
+            if (entry.allocation !== undefined) {
+                entry.ratio = new Decimal(entry.duration).div(new Decimal(totalHours)).toJSON();
+            }
         });
 
     }

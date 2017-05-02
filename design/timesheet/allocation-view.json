@@ -2,15 +2,10 @@
   "_id": "_design/allocations",
   "views": {
     "stats": {
-      "map": "function (doc) {
-        for (var entry in doc.entries) {
-            var allocation = doc.entries[entry].allocation;
-            var ratio = doc.entries[entry].ratio;
-            if (allocation != null && ratio != null) {
-                emit(doc._id +':'+ allocation, [ratio, doc.entries[entry].duration, doc.salary, doc.precarite]);
-            }
-        }
-      }"
+      "map": "function (doc) {\n  for (var entry in doc.entries) {\n  \n    var allocation = doc.entries[entry].allocation;\n    var ratio = doc.entries[entry].ratio;\n    if (allocation != null && ratio != null) {\n      emit(doc._id +':'+ allocation, [ratio, doc.entries[entry].duration, doc.salary, doc.precarite]);\n    }\n\n  }\n}"
+    },
+    "unallocated": {
+      "map": "function (doc) {\n    for (var entry in doc.entries) {\n      var allocation = doc.entries[entry].allocation;\n      if (allocation === null || allocation === undefined) {\n        emit(doc._id, doc.entries[entry].duration);\n      }\n    }\n}"
     }
   },
   "language": "javascript"
