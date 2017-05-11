@@ -104,7 +104,11 @@ export class UserTimesheet {
         });
     }
 
-    openEntry(id) {
-        this.router.navigateToRoute('timesheets/' + this.timesheet._id + '/' + id + '?r=admin/' + this.timesheet._id);
+    openEntry(id, user) {
+        this.router.navigateToRoute(
+            'timesheets/' + this.timesheet._id + '/' + id + 
+            '?r=admin/' + this.timesheet._id +
+            '&u=' + this.userName
+        );
     }
 }

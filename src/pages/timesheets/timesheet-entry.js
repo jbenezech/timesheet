@@ -34,11 +34,20 @@ export class TimesheetEntry {
     }
 
     activate(params, routeConfig, navigationInstruction) {
-        if (params.timesheetId && params.entryId) {
-            this.getTimesheetEntry(params.timesheetId, params.entryId)
+        this.userName = this.session.getUser().name;
+
+        //allow impersonification by admin
+        if (
+            navigationInstruction.queryParams.u !== undefined &&
+            this.session.isGranted('admin')
+        ) {
+            this.userName = navigationInstruction.queryParams.u;
         }
 
         this.redirectTo = navigationInstruction.queryParams.r;
+        if (params.timesheetId && params.entryId) {
+            this.getTimesheetEntry(params.timesheetId, params.entryId)
+        }
     }
 
     attached() {
@@ -129,10 +138,9 @@ export class TimesheetEntry {
 
     getTimesheetEntry(timesheetId, entryId) {
         let me = this;
-
-        return this.db.get('timesheet-' + this.session.getUser().name,  timesheetId)
+        return this.db.get('timesheet-' + this.userName,  timesheetId)
         .then( response => {
-            response.entries.map( (entry) => {            
+            response.entries.map( (entry) => {       
                 if (entry.id === entryId) {
                     me.entity = entry;
                 }
@@ -173,7 +181,7 @@ export class TimesheetEntry {
             let timesheetId = moment(this.entity.date).format('YYYY-MM');
             
             //get the timesheet document
-            this.db.get('timesheet-' + this.session.getUser().name, timesheetId).then( timesheet => {
+            this.db.get('timesheet-' + this.userName, timesheetId).then( timesheet => {
 
                 if (! timesheet._id ) {
                     timesheet = {
@@ -196,7 +204,7 @@ export class TimesheetEntry {
                     ...timesheet.entries
                 ];
 
-                this.db.save('timesheet-' + this.session.getUser().name, timesheet).then( () =>
+                this.db.save('timesheet-' + this.userName, timesheet).then( () =>
                     this.ea.publish(new FlashSuccessMessage(this.i18n.tr('success')))
                 );
             

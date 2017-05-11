@@ -68,6 +68,14 @@ export class DropDownCustomElement {
 
     selectedEntryChanged() {
 
+        if (
+            this.selectedEntry === undefined || 
+            this.selectedEntry === '' ||
+            this.selectedEntry === []
+        ) {
+            this.selectedEntry = undefined;
+        }
+
         //leave if the entry is new as this will be re-triggered after the save operation
         if (this.isSelectedEntryNew()) {
             return;
@@ -77,11 +85,7 @@ export class DropDownCustomElement {
 
         if (
             selected[0] !== null && 
-            (
-                this.selectedEntry === undefined || 
-                this.selectedEntry === '' ||
-                this.selectedEntry === []
-            )
+            this.selectedEntry === undefined
         ) {
             $(this.element).find('.dropdown').dropdown('clear');
         }
@@ -92,6 +96,11 @@ export class DropDownCustomElement {
     }
 
     isSelectedEntryNew() {
+
+        if (this.selectedEntry === undefined) {
+            return false;
+        }
+        
         if (this.entries === null) {
             return true;
         }

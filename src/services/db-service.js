@@ -97,6 +97,10 @@ export class DBService {
             me.addSyncCheckpoint(dbName);
         }).on('error', function (err) {
             me.handleSyncError(db, err);
+        }).on('denied', function(err) {
+            //doc validation failed
+            //TODO: revert doc based on revision number
+            me.ea.publish('dberr', {dbName: dbName, err: err.doc.message});            
         });
 
         this.syncHandlers.set(dbName, handler);
