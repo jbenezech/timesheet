@@ -91,8 +91,9 @@ export class DropDownCustomElement {
         }
         this.setEntryName();
 
-        this.selectAction({ dropdown: this});
-
+        if (this.selectAction !== null) {
+            this.selectAction({ dropdown: this});
+        }
     }
 
     isSelectedEntryNew() {

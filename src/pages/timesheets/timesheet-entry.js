@@ -31,10 +31,11 @@ export class TimesheetEntry {
         this.ea = ea;
         this.router = router;
         this.controller = controller;
+
+        this.userName = this.session.getUser().name;
     }
 
-    activate(params, routeConfig, navigationInstruction) {
-        this.userName = this.session.getUser().name;
+    activate(params, routeConfig, navigationInstruction) {        
 
         //allow impersonification by admin
         if (

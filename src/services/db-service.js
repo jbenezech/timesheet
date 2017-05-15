@@ -507,10 +507,9 @@ export class DBService {
     delete(dbName, docId) {
         let me = this;
         this.addUpdateCheckpoint(dbName);
-console.log(dbName, docId);
+
         return this.getDB(dbName).then( (db) => {
             return db.get(docId).then( (doc) => {
-                console.log(doc);
                 return me.getDB(dbName).remove(doc).then( (response) => {
                        
                     //if the database is not replicated live, manually sync it now

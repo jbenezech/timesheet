@@ -33,7 +33,7 @@ export class AccountingService {
             let row = rows[0];
 
             this.rules.set(
-                row.key,
+                accountingRuleEndKey,
                 {
                     charges: new Decimal(row.value[0]),
                     provision_cp_brut: new Decimal(row.value[1]),

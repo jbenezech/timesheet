@@ -207,7 +207,6 @@ export class AdminReports {
                     entries.map( (entry) => {
                         report.totals.unallocated.duration = report.totals.unallocated.duration.add(new Decimal(entry.value));
                     });
-                    console.log(report.totals);
                 })
             );
         }); 

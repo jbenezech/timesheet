@@ -46,5 +46,7 @@
     "no": "Non",
     "deletesure": "Êtes-vous sûr ?",
     "confirmation": "Confirmation",
-    "totalnoallocated": "Total non assigné"
+    "totalnoallocated": "Total non assigné",
+    "maxhours": "Erreur sur le nombre d'heures maximales",
+    "error_hoursleft": "Nombre d'heures maximales atteint"
 }

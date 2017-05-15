@@ -17,6 +17,10 @@
                     <label>${ 'salary' | t}:</label>
                     <input type="text" value.bind="timesheet.salary & validate"/>
                 </div>
+                <div class="maxhours inline four wide field">
+                    <label>${ 'maxhours' | t}:</label>
+                    <input type="text" value.bind="timesheet.maxhours & validate"/>
+                </div>
                 <div class="precarite ui checkbox inline four wide field">
                     <label>${ 'precarite' | t}?</label>
                     <input type="checkbox" value.bind="timesheet.precarite & validate"/>
