@@ -15,7 +15,15 @@
                 </a>
             </div>
         </div>
-        ${ environment.testing }
+        <div
+            class="middle menu"
+            if.bind="isAdmin"
+        >
+            <div class="item">
+                ${session.user.name}
+            </div>
+        </div>
+
         <div class="right menu">
 
             <a 
@@ -37,6 +45,30 @@
             >
                 <i class="share alternate icon"></i>
             </a>
+
+            <div 
+                class="item"
+                id="Impersonate"
+                if.bind="isAdmin"
+            >
+                <i class="spy icon"></i>
+                <div class="content">
+                    <div class="ui inline dropdown user-switch">
+                        <i class="dropdown icon"></i>
+                        <div class="menu">
+                            <div 
+                                class="
+                                    item
+                                "
+                                repeat.for="user of users"
+                                click.delegate="impersonateUser(user.doc)"
+                            >
+                                ${user.doc.name}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <a 
                 route-href="route: admin-planning"

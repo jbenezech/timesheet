@@ -3,6 +3,7 @@ import { I18N } from 'aurelia-i18n';
 import { DialogService } from "aurelia-dialog";
 import { EventAggregator } from 'aurelia-event-aggregator';
 
+import { UserAppRouter } from './user-app-router';
 import { Confirmation } from "../resources/confirmation/confirmation";
 import { DBService } from '../services/db-service';
 import { Session } from '../services/session';
@@ -10,13 +11,14 @@ import settings from '../config/app-settings';
 import environment from '../environment';
 import { log } from '../services/log';
 
-@inject(Session, I18N, DBService, DialogService, EventAggregator)
+@inject(UserAppRouter, Session, I18N, DBService, DialogService, EventAggregator)
 export class TopBar {
 
     //marker to show erros alarm
     error = false;
     
-    constructor(session, i18n, db, dialogService, ea) {    
+    constructor(router, session, i18n, db, dialogService, ea) {
+        this.router = router;    
         this.session = session;   
         this.i18n = i18n;
         this.db = db;
@@ -63,10 +65,19 @@ export class TopBar {
             log.error(response);
             this.error = true;
         });
+
+        $('.user-switch').dropdown();
+
+        this.db.listUsers().then( response => { this.users = response } );
     }
 
     navigateToPlanning() {
         this.navigate('app/timesheets/planning');
+    }
+
+    impersonateUser(user) {
+        this.session.impersonate(user);
+        this.router.navigateToRoute('planning');
     }
 
     //used for testing, clears all documents in all databases

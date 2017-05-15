@@ -146,6 +146,19 @@ export class Session {
         this.router.navigate(this.router.history.fragment, {replace:true});
     }
 
+    impersonate(user) {
+        if (this.isGranted('admin')) {
+            if (this.realUser === undefined) {
+                this.realUser = {
+                    _id: this.user._id,
+                    name: this.user.name,
+                    roles: [ ...this.user.roles ]
+                };
+            }
+            this.user = user;
+        }
+    }
+
     getToken() {
         return localStorage.getItem('aurelia_token');
     }
@@ -153,6 +166,9 @@ export class Session {
     isGranted(role) {
         if (this.user === undefined || this.user === null) {
             return false;
+        }
+        if (this.realUser !== undefined) {
+            return this.realUser.roles.includes(role);            
         }
         return this.user.roles.includes(role);
     }

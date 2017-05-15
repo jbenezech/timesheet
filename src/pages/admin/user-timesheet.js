@@ -47,9 +47,18 @@ export class UserTimesheet {
         ValidationRules.customRule(
             'hasHoursLeftToAllocate',
             (value, obj) => {
+                if (
+                    this.timesheet.maxhours === undefined ||
+                    this.timesheet.maxhours === null ||
+                    this.timesheet.maxhours === ''
+                ) {
+                    return true;
+                }
+
                 if (!this.maxHoursIsValid()) {
                     return false;
                 }
+                
                 let totalHours = this.getTotalAllocatedHours();
                 let hoursLeft = new Decimal(this.timesheet.maxhours).sub(totalHours);
                 if (hoursLeft.isZero()) {
@@ -243,6 +252,7 @@ export class UserTimesheet {
             this.timesheet.maxhours === null ||
             this.timesheet.maxhours === ''
         ) {
+            entry.allocation = allocation;
             return true;
         }
         

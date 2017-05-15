@@ -39,6 +39,10 @@ export class SemanticFormValidationRenderer {
 
         // add the error class to the semantic field
         const field = target.querySelector('.field') || target.closest('.field');
+        if (field.classList.contains('error')) {
+            return;
+        }
+        
         field.classList.add('error');
 
         // add help-block
@@ -68,6 +72,7 @@ export class SemanticFormValidationRenderer {
 
         // remove all messages related to the error.
         let messages = field.querySelectorAll('.validation-error');
+        
         let i = messages.length;
         while(i--) {
             let message = messages[i];

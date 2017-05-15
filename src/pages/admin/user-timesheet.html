@@ -12,8 +12,8 @@
             validation-renderer="semantic-form"
             validation-errors.bind="errors"
         >
-            <div class="three fields">
-                <div class="salary inline four wide field">
+            <div class="four fields">
+                <div class="salary four wide field">
                     <label>${ 'salary' | t}:</label>
                     <input type="text" value.bind="timesheet.salary & validate"/>
                 </div>
@@ -21,7 +21,7 @@
                     <label>${ 'maxhours' | t}:</label>
                     <input type="text" value.bind="timesheet.maxhours & validate"/>
                 </div>
-                <div class="precarite ui checkbox inline four wide field">
+                <div class="precarite ui checkbox four wide field">
                     <label>${ 'precarite' | t}?</label>
                     <input type="checkbox" value.bind="timesheet.precarite & validate"/>
                 </div>

@@ -76,4 +76,7 @@ export class UserAppRouter {
 
     }
 
+    navigateToRoute(route, params) {
+       this.router.navigate(route);
+    }
 }

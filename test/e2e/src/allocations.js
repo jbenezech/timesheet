@@ -52,7 +52,7 @@ describe('App', () => {
         element(by.id('AdminPanel')).click();
         browser.sleep(1000);
         element(by.css('.calendar td:first-child')).click();
-        browser.sleep(4000);
+        browser.sleep(5000);
 
         //allocate the entry
         element(by.css('.jerome .salary input')).clear().sendKeys('1000');
@@ -61,9 +61,13 @@ describe('App', () => {
         element(by.css('.jerome ~ .user.timesheet dropdown .item.selected')).click();
         browser.sleep(1000);
 
+        //force replication to remote
+        element(by.id('ForceReplicate')).click();
+        browser.sleep(4000);
+
         //logout to destroy local database and log back in
         element(by.id('Logout')).click();
-        browser.sleep(5000);
+        browser.sleep(10000);
         element(by.name('username')).sendKeys('nick');
         element(by.name('password')).sendKeys('nick');
         element(by.css('.submit.button')).click();
@@ -74,7 +78,7 @@ describe('App', () => {
         element(by.id('AdminPanel')).click();
         browser.sleep(1000);
         element(by.css('.calendar td:first-child')).click();
-        browser.sleep(4000);
+        browser.sleep(6000);
         expect(element(by.css('.jerome ~ .user.timesheet tbody tr')).isPresent()).toBe(false);
         element(by.id('showAll')).click();
         browser.sleep(2000);
