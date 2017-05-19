@@ -94,6 +94,7 @@ export class DBService {
             // 2. User disconnects before new data is synced
             // -> marker set as synced
             //probably need different marker for incoming and outgoing syncs
+
             me.addSyncCheckpoint(dbName);
         }).on('error', function (err) {
             me.handleSyncError(db, err);
@@ -133,7 +134,8 @@ export class DBService {
             ajax: {
                 "headers": {
                     "Authorization": "Basic " + token
-                }
+                },
+                "timeout": 0
             }
         }
 

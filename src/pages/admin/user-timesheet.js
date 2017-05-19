@@ -74,7 +74,7 @@ export class UserTimesheet {
             .ensure('salary').required()
             .matches(/^[\d]+[\.|]?[\d]*$/).withMessage(this.i18n.tr('error_number'))
             .ensure('maxhours')
-                .matches(/^[\d]?[\.|]?[\d]*$/).withMessage(this.i18n.tr('error_number'))
+                .matches(/^([\d]+[\.|]?[\d]*)?$/).withMessage(this.i18n.tr('error_number'))
                 .then()
                 .satisfiesRule('maxHoursIsValid')
             .on(this.timesheet)
@@ -85,6 +85,7 @@ export class UserTimesheet {
             .satisfiesRule('hasHoursLeftToAllocate')
             .on(this.timesheet)
             .rules;
+
     }
 
     maxHoursIsValid() {

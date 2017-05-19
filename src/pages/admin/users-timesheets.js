@@ -19,7 +19,7 @@ export class UsersTimesheets {
     users = new Map();
     purposes = new Map();
     unallocatedOnly = true;
-    
+
     constructor(db, ea) {
         this.db = db;
         this.ea = ea;
