@@ -84,6 +84,12 @@ export class MonthlyTimesheet {
 
         return this.db.get('timesheet-' + this.session.getUser().name,  this.timesheetId).then( response => {
             me.entity = response;
+
+            //sort entries by date
+            if (me.entity.entries !== undefined) {
+                me.entity.entries = me.entity.entries.sort( (a, b) => moment(b.date).diff(moment(a.date)) );
+            }
+
             return new Promise((resolve) => { resolve(); });
         }); 
     }

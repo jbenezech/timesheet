@@ -1,5 +1,6 @@
 import { inject, bindable } from 'aurelia-framework';
 import { EventAggregator } from 'aurelia-event-aggregator';
+import moment from 'moment';
 
 import { Session } from '../../services/session';
 import { DBService } from '../../services/db-service';
@@ -56,8 +57,12 @@ export class Timesheets {
             
             if (response.length > 0) {
                 me.lastTimesheet = response[0];
-            }
 
+                //sort entries by date
+                if (me.lastTimesheet.doc.entries !== undefined) {
+                    me.lastTimesheet.doc.entries = me.lastTimesheet.doc.entries.sort( (a, b) => moment(b.date).diff(moment(a.date)) );
+                }
+            }
             return new Promise((resolve) => { resolve(); });
         }); 
     }
