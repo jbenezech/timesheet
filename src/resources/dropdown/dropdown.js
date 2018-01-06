@@ -1,9 +1,13 @@
 import { bindable, customElement, inject, TaskQueue } from 'aurelia-framework';
 import { DBService } from '../../services/db-service';
 import { EventAggregator } from 'aurelia-event-aggregator';
+import { DialogService } from "aurelia-dialog";
+import { I18N } from 'aurelia-i18n';
+
+import { Confirmation } from "../confirmation/confirmation";
 
 @customElement('dropdown')
-@inject(Element, DBService, EventAggregator)
+@inject(Element, DBService, EventAggregator, I18N, DialogService)
 
 /**
  * Dropdown custom element for SemanticUI
@@ -30,16 +34,18 @@ export class DropDownCustomElement {
     
     selectedEntryName;
 
-    constructor(element, db, ea) {
+    constructor(element, db, ea, i18n, dialogService) {
         this.element = element;
         this.db = db;
         this.ea = ea;
+        this.i18n = i18n;
+        this.dialogService = dialogService;
     }
 
     attached() {
         let dropdown = this;
         $(this.element).find('.ui.dropdown').dropdown({
-            'forceSelection': false,
+            'forceSelection': true,
             'allowAdditions': dropdown.allowAdd,
             'hideAdditions': !dropdown.allowAdd,
             'onChange': function(value, text, $choice) {
@@ -47,7 +53,16 @@ export class DropDownCustomElement {
                     typeof $choice !== 'undefined' &&
                     $($choice[0]).hasClass('addition')
                 ) {
-                    dropdown.save(text);
+                    dropdown.dialogService.open({
+                        viewModel: Confirmation,
+                        model: dropdown.i18n.tr('dropdown.add_confirm', {entry: text})
+                    }).then(result => {
+                        if (result.wasCancelled) {
+                            dropdown.selectedEntry = undefined;
+                            return;
+                        }
+                        dropdown.save(text);
+                    });
                 } else {
                     dropdown.selectedEntry = value;
                 }

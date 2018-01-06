@@ -3,7 +3,7 @@
     <div tabindex="-1" role="dialog" class="ui small modal confirmation modal-dialog">
         <div class="header" t="confirmation">Confirmation</div>
         <div class="content">
-            <p>${message | t}</p>
+            <p innerhtml.bind="message"></p>
         </div>
         <div class="actions">
             <div 

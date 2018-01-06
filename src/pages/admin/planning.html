@@ -1,15 +1,30 @@
 <template>
 
-    <div 
-        class="ui calendar"
-        data-property="date"
-    >
-        <div class="ui input left icon">
-            <input
-                class=""
-                type="hidden"
-            />
-        </div>
-    </div>      
+    <require from="./global-reports"></require>
+
+    <div class="ui two item stackable tabs pointing huge panel menu">        
+        <a class="active item" data-tab="planning"><i class="calendar icon"></i></a>
+        <a class="item" data-tab="reports"><i class="pie chart icon"></i></a>
+    </div>
+
+    <div data-tab="planning" class="ui tab segment active">
+
+        <div 
+            class="ui planning calendar"
+            data-property="date"
+        >
+            <div class="ui input left icon">
+                <input
+                    class=""
+                    type="hidden"
+                />
+            </div>
+        </div>      
+
+    </div>
+
+    <div data-tab="reports" class="ui tab segment">
+        <global-reports></global-reports>
+    </div>
 
 </template>

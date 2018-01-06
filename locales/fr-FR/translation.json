@@ -42,11 +42,18 @@
     "timesheetentry": "Saisie",
     "monthtimesheet": "Entrées du mois",
     "success": "Modification enregistrée",
-    "yes": "oui",
+    "yes": "Oui",
     "no": "Non",
     "deletesure": "Êtes-vous sûr ?",
     "confirmation": "Confirmation",
     "totalnoallocated": "Total non assigné",
     "maxhours": "Nombre d'heures assignables maximales",
-    "error_hoursleft": "Nombre d'heures maximales atteint"
+    "error_hoursleft": "Nombre d'heures maximales atteint",
+    "dropdown": {
+        "add_confirm": "Voulez-vous ajouter l'entrée <b>{{entry}}</b> à la liste ?"
+    },
+    "from_date": "From",
+    "to_date": "To",
+    "nbrsheets": "Nombre d'interventions",
+    "download_all": "Télécharger toutes les entrées"
 }

@@ -16,7 +16,11 @@ export class Planning {
 
     attached() {
         let me = this;
-        $(this.element).find('.ui.calendar').calendar({
+
+        $('.panel.menu .item').tab({
+        });
+
+        $(this.element).find('.ui.planning.calendar').calendar({
             type: 'month',
             inline: true,
             text: settings.calendar_text,
