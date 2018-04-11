@@ -20,9 +20,11 @@ export class LoggedRedirect
         let router = this.router;
         this.session.start()
         .then(() => {
+            console.log("Session started, going to main screen");
             router.navigate('app/timesheets');
         })
         .catch (function (err) {
+            console.log("Could not start session");
             log.error(err);
         });
     }

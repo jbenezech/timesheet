@@ -72,7 +72,8 @@ export class DBService {
         }
         
         this.addUpdateCheckpoint(dbName);
-
+        
+        console.log("Connecting to db with url " + this.sharding.getRemoteUrl());
         let handler = db.sync(
             this.sharding.getRemoteUrl() + dbName, 
             me.getSyncOptions(dbName)
@@ -204,11 +205,17 @@ export class DBService {
         return Promise.all(promises)
         .then( () => {
 
+            // console.log(indexedDB);
+            // console.log(IDBObjectStore);
+            // let request = objectStore.getAll();
+            // console.log(request);
+            // console.log(request.source);
             //remove all indexdb databases (some might be there but no mounted in memory)
             //https://gist.github.com/rmehner/b9a41d9f659c9b1c3340
-            window.indexedDB.webkitGetDatabaseNames().onsuccess = function(event) {
-                Array.prototype.forEach.call(event.target.result, indexedDB.deleteDatabase.bind(indexedDB));
-            }
+            //@TODO Deprecated, how to do ???
+            // window.indexedDB.webkitGetDatabaseNames().onsuccess = function(event) {
+            //     Array.prototype.forEach.call(event.target.result, indexedDB.deleteDatabase.bind(indexedDB));
+            // }
 
             //also remove sync markers
             localStorage.removeItem('last-updates');
@@ -243,6 +250,7 @@ export class DBService {
     //list all application users
     listUsers() {
 
+console.log("**************************** LISTING USER");
         //we cannot replicate the _users database even with admin access to it
         //so we copy it partially if we can retrieve it
         if (!this.dbs.has('staff')) {
@@ -255,11 +263,13 @@ export class DBService {
         let me = this;
         let promises = [];
 
+console.log("**************************** FETCHING USERS");
         //we can't access design documents on _users database so we retrieve all docs        
         return this.http.fetch(this.sharding.getRemoteUrl() + '_users/_all_docs?include_docs=true')
         .then(response => response.json())
         .then(users => {
 
+console.log("**************************** GOT USERS");
             return Promise.all(
                 users.rows.filter( (user) => {
                     return user.id.match(/^org\.couchdb\.user/);
@@ -283,6 +293,8 @@ export class DBService {
         }).then( (filteredUsers) => {
             return filteredUsers;
         }).catch( err => {
+console.log("**************************** COULD NOT FETCH USERS");
+console.log(err);
             //if we cannot connect to remote, retrieve local staff database
             return db.allDocs({include_docs: true})
             .then( (result) => result.rows)

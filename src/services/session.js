@@ -80,7 +80,7 @@ export class Session {
         if (localStorage.getItem('aurelia_token') === null) {
             return new Promise((resolve) => {});
         }
-
+        console.log("Got token, loading user");
        let userInfo = atob(localStorage.getItem('aurelia_token')).split(':');
        let username = userInfo[0];
        let password = userInfo[1];
@@ -99,6 +99,7 @@ export class Session {
             }
         );
 
+        console.log("Got DB");
         let me = this;
 
         return db.get(
@@ -111,8 +112,13 @@ export class Session {
             me.persistToStorage();
             return result;
         }).catch(function (err) {
-            //do nothing, session is returned from storage
+            console.log("Could not load user from backend" + err.status);
             log.error(err);
+            if (err.status !== undefined && (err.status === 401 || err.status === 403)) {
+                me.invalidate();
+                throw err;
+            }
+            //do nothing, session is returned from storage
         });
        
     }
